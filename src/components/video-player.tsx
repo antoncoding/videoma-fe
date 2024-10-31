@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Star, Info } from "lucide-react";
+import { useSession, signIn } from "next-auth/react";
 
 interface Subtitle {
   text: string;
@@ -44,6 +46,8 @@ export function VideoPlayer({
   const [showFloatingSubtitles, setShowFloatingSubtitles] = useState(true);
   const [showOriginalSubtitle, setShowOriginalSubtitle] = useState(true);
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
+
+  const { data: session } = useSession();
 
   const getCurrentSubtitle = (subtitles: Subtitle[]) => {
     return subtitles.find(
@@ -97,6 +101,51 @@ export function VideoPlayer({
       default:
         return '🌐';
     }
+  };
+
+  const handleSaveSentence = async (
+    original: Subtitle,
+    translation?: Subtitle
+  ) => {
+    if (!session?.user) {
+      signIn("google");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/sentences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({
+          video_url: videoUrl,
+          video_title: document.title,
+          original_text: original.text,
+          translated_text: translation?.text,
+          timestamp: original.start,
+          original_language: audioLanguage,
+          target_language: targetLanguage,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save sentence');
+      }
+      // Show success toast
+    } catch (error) {
+      console.error("Error saving sentence:", error);
+      // Show error toast
+    }
+  };
+
+  const handleShowDetails = (
+    original: Subtitle,
+    translation?: Subtitle
+  ) => {
+    // We'll implement this later
+    console.log("Show details for:", original, translation);
   };
 
   return (
@@ -201,18 +250,37 @@ export function VideoPlayer({
               <div
                 key={`transcript-${index}-${item.duration}`}
                 id={`original-${item.start}`}
-                className={`p-2 hover:bg-muted cursor-pointer transition-colors ${
-                  currentTime >= item.start && 
-                  currentTime <= (item.start + item.duration)
-                    ? "bg-primary/10"
-                    : ""
-                }`}
+                className="group p-2 hover:bg-muted cursor-pointer transition-colors relative"
                 onClick={() => handleSubtitleClick(item.start)}
               >
-                <span className="text-sm text-muted-foreground">
-                  {formatTime(item.start)}
-                </span>
-                <p className="font-inter">{item.text}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-sm text-muted-foreground">
+                      {formatTime(item.start)}
+                    </span>
+                    <p className="font-inter">{item.text}</p>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSaveSentence(item, translation?.data[index]);
+                      }}
+                      className="p-1 hover:bg-primary/20 rounded"
+                    >
+                      <Star className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShowDetails(item, translation?.data[index]);
+                      }}
+                      className="p-1 hover:bg-primary/20 rounded"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
