@@ -3,6 +3,7 @@ import { inter, montserrat } from "./fonts";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/navbar";
+import { Sidebar } from "@/components/layout/sidebar";
 
 export const metadata: Metadata = {
   title: "Learn with Clips",
@@ -18,8 +19,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${montserrat.variable} font-sans`}>
         <Providers>
-          <Navbar />
-          <main>{children}</main>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <div className="flex-1 ml-64"> {/* Adjust margin based on sidebar width */}
+              <main className="p-8">{children}</main>
+            </div>
+          </div>
         </Providers>
       </body>
     </html>

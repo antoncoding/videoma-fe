@@ -12,6 +12,7 @@
     "@auth/core": "^0.37.2",
     "@radix-ui/react-icons": "^1.3.0",
     "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-scroll-area": "^1.2.0",
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",
@@ -27,7 +28,8 @@
     "react-player": "^2.16.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "ui": "link:@/components/ui"
+    "ui": "link:@/components/ui",
+    "zustand": "^5.0.1"
   },
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",

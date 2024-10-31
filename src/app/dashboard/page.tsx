@@ -1,245 +1,77 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { VideoPlayer } from "@/components/video-player";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { useVideosStore } from "@/store/videos";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RxCrossCircled } from "react-icons/rx";
-
-
-interface TranscriptData {
-  text: string;
-  start: number;
-  duration: number;
-}
-
-interface ApiResponse {
-  status: string;
-  transcription: {
-    source: string;
-    success: boolean;
-    data: TranscriptData[];
-  };
-  translation?: {
-    source: string;
-    success: boolean;
-    data: TranscriptData[];
-  };
-}
 
 export default function Dashboard() {
   const [videoUrl, setVideoUrl] = useState("");
-  const [audioLanguage, setAudioLanguage] = useState("es");
-  const [targetLanguage, setTargetLanguage] = useState("en");
-  const [transcriptData, setTranscriptData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const addVideo = useVideosStore((state) => state.addVideo);
 
-  const validateYouTubeUrl = (url: string) => {
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
-    return youtubeRegex.test(url);
+  const getYouTubeVideoId = (url: string) => {
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/);
+    return match?.[1];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validate URL
-    if (!validateYouTubeUrl(videoUrl)) {
+    const videoId = getYouTubeVideoId(videoUrl);
+    if (!videoId) {
       setError("Please enter a valid YouTube URL");
       return;
     }
 
     setLoading(true);
-    
+
     try {
-      const response = await fetch("http://localhost:5000/api/process", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          video_url: videoUrl,
-          audio_language: audioLanguage,
-          target_language: targetLanguage,
-        }),
+      // You might want to fetch video details from YouTube API here
+      // For now, we'll just use the URL as the title
+      addVideo({
+        id: videoId,
+        title: `Video ${videoId}`,
+        url: videoUrl,
+        language: "es", // Make this configurable
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data: ApiResponse = await response.json();
-      if (data.status === "success" && data.transcription?.data) {
-        setTranscriptData(data);
-        setIsSearching(false);
-        setError(null);
-      } else {
-        setError(data.status || "Failed to process video");
-      }
+
+      router.push(`/videos/${videoId}`);
     } catch (error) {
-      console.error("Error fetching transcript:", error);
-      setError(error instanceof Error ? error.message : "Failed to process video");
+      setError(error instanceof Error ? error.message : "Failed to add video");
     } finally {
       setLoading(false);
     }
   };
 
-  const getLanguageEmoji = (lang: string) => {
-    switch (lang.toLowerCase()) {
-      case 'es':
-        return '🇪🇸';
-      case 'en':
-        return '🇬🇧';
-      default:
-        return '🌐';
-    }
-  };
-
-  const handleReset = () => {
-    setIsSearching(true);
-    setError(null);
-    setTranscriptData(null);
-    setVideoUrl("");
-  };
-
   return (
-    <div className="container max-w-4xl mx-auto p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-montserrat">Learn with Clips</h1>
-        {!isSearching && (
-          <Button onClick={handleReset}>
-            New Search
-          </Button>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold mb-4">Add New Video</h1>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-      </div>
-      
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <RxCrossCircled className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      
-      {isSearching && (
-        <form onSubmit={handleSubmit} className="mb-8">
-          <div className="flex gap-2 items-center">
-            <Input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="YouTube URL"
-              className="flex-1 max-w-96"
-              disabled={loading}
-            />
-            <Select 
-              value={audioLanguage} 
-              onValueChange={setAudioLanguage}
-              disabled={loading}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue>
-                  <span className="flex items-center gap-2">
-                    {getLanguageEmoji(audioLanguage)}
-                    {' '}Original
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="es">
-                  <span className="flex items-center gap-2">
-                    🇪🇸 Spanish
-                  </span>
-                </SelectItem>
-                <SelectItem value="en">
-                  <span className="flex items-center gap-2">
-                    🇬🇧 English
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Select 
-              value={targetLanguage} 
-              onValueChange={setTargetLanguage}
-              disabled={loading}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue>
-                  <span className="flex items-center gap-2">
-                    {getLanguageEmoji(targetLanguage)}
-                    {' '}Target
-                  </span>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">
-                  <span className="flex items-center gap-2">
-                    🇬🇧 English
-                  </span>
-                </SelectItem>
-                <SelectItem value="es">
-                  <span className="flex items-center gap-2">
-                    🇪🇸 Spanish
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Loading..." : "Learn"}
-            </Button>
-          </div>
+        <form onSubmit={handleSubmit} className="flex gap-4">
+          <Input
+            type="text"
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="YouTube URL"
+            className="flex-1"
+            disabled={loading}
+          />
+          <Button type="submit" disabled={loading}>
+            {loading ? "Adding..." : "Add Video"}
+          </Button>
         </form>
-      )}
-
-      {transcriptData?.status === "success" && transcriptData.transcription?.data && (
-        <div className="relative">
-          <ErrorBoundary fallback={<div>Error loading video player</div>}>
-            <VideoPlayer 
-              videoUrl={videoUrl} 
-              transcript={transcriptData.transcription}
-              translation={transcriptData.translation}
-              audioLanguage={audioLanguage}
-              targetLanguage={targetLanguage}
-            />
-          </ErrorBoundary>
-        </div>
-      )}
+      </div>
     </div>
   );
-}
-
-// Error Boundary Component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Video player error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-
-    return this.props.children;
-  }
 } 
