@@ -16,6 +16,16 @@ const config: Config = {
   		}
   	},
   	extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)'],
+        inter: ['var(--font-inter)'],
+        montserrat: ['var(--font-montserrat)'],
+      },
+      fontWeight: {
+        normal: '400',
+        medium: '500',
+        bold: '700',
+      },
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
