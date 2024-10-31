@@ -5,6 +5,7 @@ import ReactPlayer from "react-player";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 interface Subtitle {
   text: string;
@@ -14,8 +15,14 @@ interface Subtitle {
 
 interface VideoPlayerProps {
   videoUrl: string;
-  transcript: Subtitle[];
-  translation?: Subtitle[];
+  transcript: {
+    source: string;
+    data: Subtitle[];
+  };
+  translation?: {
+    source: string;
+    data: Subtitle[];
+  };
   audioLanguage?: string;
   targetLanguage?: string;
 }
@@ -49,8 +56,8 @@ export function VideoPlayer({
   // Auto-scroll logic
   useEffect(() => {
     if (!isUserScrolling) {
-      const currentOriginal = getCurrentSubtitle(transcript);
-      const currentTranslation = translation && getCurrentSubtitle(translation);
+      const currentOriginal = getCurrentSubtitle(transcript.data);
+      const currentTranslation = translation && getCurrentSubtitle(translation.data);
 
       if (currentOriginal) {
         const originalElement = document.getElementById(`original-${currentOriginal.start}`);
@@ -147,21 +154,25 @@ export function VideoPlayer({
           <div className="absolute bottom-16 left-0 right-0 mx-auto w-[90%] space-y-2 z-20">
             {showOriginalSubtitle && (
               <div className="min-h-[60px] bg-black/80 text-white p-4 rounded-lg flex items-center">
-                <span className="mr-2 text-lg" role="img" aria-label={audioLanguage}>
-                  {getLanguageEmoji(audioLanguage)}
-                </span>
+                <div className="flex items-center gap-2 mr-4">
+                  <span className="text-lg" role="img" aria-label={audioLanguage}>
+                    {getLanguageEmoji(audioLanguage)}
+                  </span>
+                </div>
                 <p className="text-center flex-1">
-                  {getCurrentSubtitle(transcript)?.text || " "}
+                  {getCurrentSubtitle(transcript.data)?.text || " "}
                 </p>
               </div>
             )}
             {translation && showTranslationSubtitle && (
               <div className="min-h-[60px] bg-primary/80 text-white p-4 rounded-lg flex items-center">
-                <span className="mr-2 text-lg" role="img" aria-label={targetLanguage}>
-                  {getLanguageEmoji(targetLanguage)}
-                </span>
+                <div className="flex items-center gap-2 mr-4">
+                  <span className="text-lg" role="img" aria-label={targetLanguage}>
+                    {getLanguageEmoji(targetLanguage)}
+                  </span>
+                </div>
                 <p className="text-center flex-1">
-                  {getCurrentSubtitle(translation)?.text || " "}
+                  {getCurrentSubtitle(translation.data)?.text || " "}
                 </p>
               </div>
             )}
@@ -177,13 +188,16 @@ export function VideoPlayer({
             className="h-[300px] overflow-y-auto"
             onScroll={handleScroll}
           >
-            <div className="flex items-center mb-2 sticky top-0 bg-background p-2 border-b">
-              <span className="mr-2 text-lg" role="img" aria-label={audioLanguage}>
+            <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b">
+              <span className="text-lg" role="img" aria-label={audioLanguage}>
                 {getLanguageEmoji(audioLanguage)}
               </span>
               <h3 className="font-bold">Original</h3>
+              <Badge variant={transcript.source === "youtube" ? "secondary" : "default"}>
+                {transcript.source === "youtube" ? "YouTube" : "Whisper AI"}
+              </Badge>
             </div>
-            {transcript.map((item, index) => (
+            {transcript.data.map((item, index) => (
               <div
                 key={`transcript-${index}-${item.duration}`}
                 id={`original-${item.start}`}
@@ -208,13 +222,16 @@ export function VideoPlayer({
               className="h-[300px] overflow-y-auto border-l pl-4"
               onScroll={handleScroll}
             >
-              <div className="flex items-center mb-2 sticky top-0 bg-background p-2 border-b">
-                <span className="mr-2 text-lg" role="img" aria-label={targetLanguage}>
+              <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b">
+                <span className="text-lg" role="img" aria-label={targetLanguage}>
                   {getLanguageEmoji(targetLanguage)}
                 </span>
                 <h3 className="font-semibold">Translation</h3>
+                <Badge variant={translation.source === "youtube" ? "secondary" : "default"}>
+                  {translation.source === "youtube" ? "YouTube" : "AI Translated"}
+                </Badge>
               </div>
-              {translation.map((item, index) => (
+              {translation.data.map((item, index) => (
                 <div
                   key={index}
                   id={`translation-${item.start}`}

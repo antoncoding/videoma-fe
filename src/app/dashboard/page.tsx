@@ -159,8 +159,8 @@ export default function Dashboard() {
       {transcriptData?.status === "success" && (
         <VideoPlayer 
           videoUrl={videoUrl} 
-          transcript={transcriptData.transcription.data}
-          translation={transcriptData.translation?.data}
+          transcript={transcriptData.transcription}
+          translation={transcriptData.translation}
           audioLanguage={audioLanguage}
           targetLanguage={targetLanguage}
         />
