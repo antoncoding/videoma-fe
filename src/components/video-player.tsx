@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Star, Info } from "lucide-react";
 import { useSession, signIn } from "next-auth/react";
+import { useSentences } from '@/hooks/useSentences';
 
 interface Subtitle {
   text: string;
@@ -48,6 +49,8 @@ export function VideoPlayer({
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
 
   const { data: session } = useSession();
+
+  const { saveSentence, isLoading: isSaving, error: saveError } = useSentences();
 
   const getCurrentSubtitle = (subtitles: Subtitle[]) => {
     return subtitles.find(
@@ -107,34 +110,18 @@ export function VideoPlayer({
     original: Subtitle,
     translation?: Subtitle
   ) => {
-    if (!session?.user) {
-      signIn("google");
-      return;
-    }
-
     try {
-      const response = await fetch("http://localhost:5000/api/sentences", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.accessToken}`,
-        },
-        body: JSON.stringify({
-          video_url: videoUrl,
-          video_title: document.title,
-          original_text: original.text,
-          translated_text: translation?.text,
-          timestamp: original.start,
-          original_language: audioLanguage,
-          target_language: targetLanguage,
-        }),
+      await saveSentence({
+        original,
+        translation,
+        videoUrl,
+        audioLanguage,
+        targetLanguage,
+        source: transcript.source,
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save sentence');
-      }
       // Show success toast
     } catch (error) {
+      // Error handling is done in the hook
       console.error("Error saving sentence:", error);
       // Show error toast
     }
@@ -194,13 +181,12 @@ export function VideoPlayer({
             onProgress={handleProgress}
             onReady={() => setIsReady(true)}
             className="rounded-lg"
-            style={{ position: 'relative', zIndex: 10 }}
           />
         </div>
 
         {/* Floating subtitles */}
         {showFloatingSubtitles && (
-          <div className="absolute bottom-16 left-0 right-0 mx-auto w-[90%] space-y-2 z-20">
+          <div className="absolute bottom-16 left-0 right-0 mx-auto w-[90%] space-y-2">
             {showOriginalSubtitle && (
               <div className="min-h-[60px] bg-black/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
@@ -234,10 +220,10 @@ export function VideoPlayer({
         <div className="grid grid-cols-2 gap-4">
           <div 
             ref={originalTranscriptRef}
-            className="h-[300px] overflow-y-auto"
+            className="h-[300px] overflow-y-auto relative"
             onScroll={handleScroll}
           >
-            <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b">
+            <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
               <span className="text-lg" role="img" aria-label={audioLanguage}>
                 {getLanguageEmoji(audioLanguage)}
               </span>
@@ -250,17 +236,22 @@ export function VideoPlayer({
               <div
                 key={`transcript-${index}-${item.duration}`}
                 id={`original-${item.start}`}
-                className="group p-2 hover:bg-muted cursor-pointer transition-colors relative"
+                className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
+                  currentTime >= item.start && 
+                  currentTime <= (item.start + item.duration)
+                    ? "bg-primary/10"
+                    : ""
+                }`}
                 onClick={() => handleSubtitleClick(item.start)}
               >
-                <div className="flex justify-between items-start">
-                  <div>
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1">
                     <span className="text-sm text-muted-foreground">
                       {formatTime(item.start)}
                     </span>
                     <p className="font-inter">{item.text}</p>
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 shrink-0">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -287,23 +278,23 @@ export function VideoPlayer({
           {translation && (
             <div 
               ref={translationTranscriptRef}
-              className="h-[300px] overflow-y-auto border-l pl-4"
+              className="h-[300px] overflow-y-auto border-l pl-4 relative"
               onScroll={handleScroll}
             >
-              <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b">
+              <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
                 <span className="text-lg" role="img" aria-label={targetLanguage}>
                   {getLanguageEmoji(targetLanguage)}
                 </span>
                 <h3 className="font-semibold">Translation</h3>
-                <Badge variant={translation.source === "youtube" ? "secondary" : "default"}>
-                  {translation.source === "youtube" ? "YouTube" : "AI Translated"}
+                <Badge variant={translation.source === "youtube_translation" ? "secondary" : "default"}>
+                  {translation.source === "youtube_translation" ? "YouTube" : "AI Translated"}
                 </Badge>
               </div>
               {translation.data.map((item, index) => (
                 <div
                   key={index}
                   id={`translation-${item.start}`}
-                  className={`p-2 hover:bg-muted cursor-pointer transition-colors ${
+                  className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
                     currentTime >= item.start && 
                     currentTime <= (item.start + item.duration)
                       ? "bg-primary/10"
@@ -311,10 +302,25 @@ export function VideoPlayer({
                   }`}
                   onClick={() => handleSubtitleClick(item.start)}
                 >
-                  <span className="text-sm text-muted-foreground">
-                    {formatTime(item.start)}
-                  </span>
-                  <p>{item.text}</p>
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <span className="text-sm text-muted-foreground">
+                        {formatTime(item.start)}
+                      </span>
+                      <p>{item.text}</p>
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveSentence(translation.data[index], item);
+                        }}
+                        className="p-1 hover:bg-primary/20 rounded"
+                      >
+                        <Star className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
