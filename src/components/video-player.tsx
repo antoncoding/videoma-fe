@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Info } from "lucide-react";
 import { useSession, signIn } from "next-auth/react";
 import { useSentences } from '@/hooks/useSentences';
+import { useSentenceManager } from '@/hooks/useSentenceManager';
 
 interface Subtitle {
   text: string;
@@ -18,6 +19,7 @@ interface Subtitle {
 
 interface VideoPlayerProps {
   videoUrl: string;
+  videoId: string;
   transcript: {
     source: string;
     data: Subtitle[];
@@ -31,7 +33,8 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ 
-  videoUrl, 
+  videoUrl,
+  videoId,
   transcript, 
   translation,
   audioLanguage = "es",
@@ -48,9 +51,10 @@ export function VideoPlayer({
   const [showOriginalSubtitle, setShowOriginalSubtitle] = useState(true);
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
 
-  const { data: session } = useSession();
+  console.log('transcript.data', transcript.data)
+  console.log('translation.data', translation?.data)
 
-  const { saveSentence, isLoading: isSaving, error: saveError } = useSentences();
+  const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
 
   const getCurrentSubtitle = (subtitles: Subtitle[]) => {
     return subtitles.find(
@@ -106,25 +110,25 @@ export function VideoPlayer({
     }
   };
 
-  const handleSaveSentence = async (
+  const onSaveSentence = async (
     original: Subtitle,
-    translation?: Subtitle
   ) => {
-    try {
-      await saveSentence({
-        original,
-        translation,
-        videoUrl,
-        audioLanguage,
-        targetLanguage,
-        source: transcript.source,
-      });
-      // Show success toast
-    } catch (error) {
-      // Error handling is done in the hook
-      console.error("Error saving sentence:", error);
-      // Show error toast
-    }
+
+    // find corresponding translation
+    const translationSubtitle = translation?.data.find(
+      (item) => item.start === original.start
+    );
+
+    await handleSaveSentence({
+      original,
+      translation: translationSubtitle,
+      videoUrl,
+      videoId,
+      timestamp: original.start,
+      audioLanguage,
+      targetLanguage,
+      source: transcript.source,
+    });
   };
 
   const handleShowDetails = (
@@ -255,7 +259,7 @@ export function VideoPlayer({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSaveSentence(item, translation?.data[index]);
+                        onSaveSentence(item);
                       }}
                       className="p-1 hover:bg-primary/20 rounded"
                     >
@@ -308,17 +312,6 @@ export function VideoPlayer({
                         {formatTime(item.start)}
                       </span>
                       <p>{item.text}</p>
-                    </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSaveSentence(translation.data[index], item);
-                        }}
-                        className="p-1 hover:bg-primary/20 rounded"
-                      >
-                        <Star className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 </div>

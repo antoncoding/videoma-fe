@@ -89,23 +89,25 @@ export function Sidebar() {
                 onClick={() => item.isExpandable && toggleExpand(item.title)}
               >
                 {item.isExpandable ? (
-                  <div className="flex items-center">
-                    {item.icon}
+                  <div className="flex items-center w-full">
+                    <span className="flex items-center gap-2">
+                      {item.icon}
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </span>
                     {!isCollapsed && (
-                      <>
-                        <span className="ml-2">{item.title}</span>
+                      <span className="ml-auto">
                         {expandedItems.includes(item.title) ? (
-                          <ChevronDown className="ml-auto h-4 w-4" />
+                          <ChevronDown className="h-4 w-4" />
                         ) : (
-                          <ChevronRight className="ml-auto h-4 w-4" />
+                          <ChevronRight className="h-4 w-4" />
                         )}
-                      </>
+                      </span>
                     )}
                   </div>
                 ) : (
-                  <Link href={item.href} className="flex items-center">
+                  <Link href={item.href} className="flex items-center gap-2 w-full">
                     {item.icon}
-                    {!isCollapsed && <span className="ml-2">{item.title}</span>}
+                    {!isCollapsed && <span>{item.title}</span>}
                   </Link>
                 )}
               </Button>
@@ -124,7 +126,7 @@ export function Sidebar() {
                       asChild
                     >
                       <Link href={`/videos/${video.id}`}>
-                        <span className="truncate">{video.title}</span>
+                        <span className="truncate">{video.customTitle}</span>
                       </Link>
                     </Button>
                   ))}

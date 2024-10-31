@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: "Learn with Clips",
@@ -21,10 +22,11 @@ export default function RootLayout({
         <Providers>
           <div className="flex min-h-screen">
             <Sidebar />
-            <div className="flex-1 ml-64"> {/* Adjust margin based on sidebar width */}
+            <div className="flex-1 ml-64">
               <main className="p-8">{children}</main>
             </div>
           </div>
+          <Toaster />
         </Providers>
       </body>
     </html>

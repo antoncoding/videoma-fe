@@ -6,9 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useVideosStore } from "@/store/videos";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const LANGUAGES = [
+  { code: "es", label: "Spanish", flag: "🇪🇸" },
+  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "fr", label: "French", flag: "🇫🇷" },
+] as const;
+
+type LanguageCode = typeof LANGUAGES[number]["code"];
 
 export default function Dashboard() {
   const [videoUrl, setVideoUrl] = useState("");
+  const [audioLanguage, setAudioLanguage] = useState<LanguageCode>("es");
+  const [targetLanguage, setTargetLanguage] = useState<LanguageCode>("en");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -23,6 +40,11 @@ export default function Dashboard() {
     e.preventDefault();
     setError(null);
 
+    if (audioLanguage === targetLanguage) {
+      setError("Source and target languages must be different");
+      return;
+    }
+
     const videoId = getYouTubeVideoId(videoUrl);
     if (!videoId) {
       setError("Please enter a valid YouTube URL");
@@ -32,13 +54,11 @@ export default function Dashboard() {
     setLoading(true);
 
     try {
-      // You might want to fetch video details from YouTube API here
-      // For now, we'll just use the URL as the title
       addVideo({
         id: videoId,
-        title: `Video ${videoId}`,
+        customTitle: 'new video',
         url: videoUrl,
-        language: "es", // Make this configurable
+        language: audioLanguage,
       });
 
       router.push(`/videos/${videoId}`);
@@ -58,18 +78,57 @@ export default function Dashboard() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        <form onSubmit={handleSubmit} className="flex gap-4">
-          <Input
-            type="text"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="YouTube URL"
-            className="flex-1"
-            disabled={loading}
-          />
-          <Button type="submit" disabled={loading}>
-            {loading ? "Adding..." : "Add Video"}
-          </Button>
+        <form onSubmit={handleSubmit}>
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="Paste YouTube URL"
+              className="flex-1"
+              disabled={loading}
+            />
+            <Select
+              value={audioLanguage}
+              onValueChange={(value) => setAudioLanguage(value as LanguageCode)}
+              disabled={loading}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Original" />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    <span className="flex items-center gap-2">
+                      {lang.flag} {lang.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-muted-foreground">→</span>
+            <Select
+              value={targetLanguage}
+              onValueChange={(value) => setTargetLanguage(value as LanguageCode)}
+              disabled={loading}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Target" />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    <span className="flex items-center gap-2">
+                      {lang.flag} {lang.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Adding..." : "Learn"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>
