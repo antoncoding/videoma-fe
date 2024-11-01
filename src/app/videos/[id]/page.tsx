@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useVideosStore } from "@/store/videos";
 import { VideoPlayer } from "@/components/video-player";
 import { useEffect, useState } from "react";
@@ -24,6 +24,9 @@ interface TranscriptResponse {
 
 export default function VideoPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const startTime = searchParams.get('t'); // Get timestamp from URL
+  
   const { videos, updateVideoTitle } = useVideosStore();
   const video = videos.find((v) => v.id === params.id);
   
@@ -33,6 +36,7 @@ export default function VideoPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [initialTime, setInitialTime] = useState(startTime ? parseInt(startTime) : 0);
 
   useEffect(() => {
     if (video?.customTitle) {
@@ -197,6 +201,7 @@ export default function VideoPage() {
           audioLanguage={video.language}
           targetLanguage="en"
           isLoading={false}
+          initialTime={initialTime}
         />
       )}
     </div>

@@ -29,6 +29,7 @@ interface VideoPlayerProps {
   audioLanguage?: string;
   targetLanguage?: string;
   isLoading?: boolean;
+  initialTime?: number;
 }
 
 export function VideoPlayer({ 
@@ -39,6 +40,7 @@ export function VideoPlayer({
   audioLanguage = "es",
   targetLanguage = "en",
   isLoading = false,
+  initialTime = 0,
 }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null);
   const originalTranscriptRef = useRef<HTMLDivElement>(null);
@@ -150,7 +152,7 @@ export function VideoPlayer({
   return (
     <div className="relative space-y-4">
       {/* Video player with reduced max-width */}
-      <div className="relative mx-auto">
+      <div className="relative max-w-[800px] mx-auto">
         <div className="aspect-video">
           <ReactPlayer
             ref={playerRef}
@@ -159,7 +161,12 @@ export function VideoPlayer({
             height="100%"
             controls
             onProgress={handleProgress}
-            onReady={() => setIsReady(true)}
+            onReady={() => {
+              setIsReady(true);
+              if (initialTime > 0) {
+                playerRef.current?.seekTo(initialTime);
+              }
+            }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onEnded={() => setIsPlaying(false)}

@@ -16,14 +16,15 @@ const handler = NextAuth({
         params: {
           scope: "openid email profile",
           access_type: "offline",
+          prompt: "consent",
           response_type: "code",
         },
       },
     }),
   ],
-  pages: {
-    signIn: '/login',
-    error: '/auth/error', // Error code passed in query string as ?error=
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
     async jwt({ token, account }) {
@@ -38,6 +39,6 @@ const handler = NextAuth({
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-})
+});
 
-export { handler as GET, handler as POST } 
+export { handler as GET, handler as POST }

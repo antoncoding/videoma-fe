@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Trash2,
   LogOut,
-  User
+  User,
+  Settings
 } from "lucide-react";
 import { useState } from "react";
 import { useVideosStore } from '@/store/videos';
@@ -162,6 +163,22 @@ export function Sidebar() {
         </ScrollArea>
 
         <div className="border-t p-4">
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full",
+                isCollapsed ? "justify-center px-2" : "justify-start"
+              )}
+              asChild
+            >
+              <Link href="/settings">
+                <Settings className="h-4 w-4" />
+                {!isCollapsed && <span className="ml-2">Settings</span>}
+              </Link>
+            </Button>
+          </div>
+
           {status === "authenticated" && session?.user ? (
             <div className={cn(
               "flex items-center gap-3",

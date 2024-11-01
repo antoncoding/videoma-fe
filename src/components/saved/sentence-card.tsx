@@ -1,8 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, ExternalLink, Star, Clock } from "lucide-react";
+import { Trash2, ExternalLink, Star, Clock, Volume2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { useVideosStore } from "@/store/videos";
+import { useState, useRef } from "react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { toast } from "@/components/ui/use-toast";
+import { useVoiceSettings } from "@/hooks/useVoiceSettings";
 
 interface SavedSentence {
   id: number;
@@ -25,7 +31,12 @@ interface SentenceCardProps {
 
 export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   const { videos } = useVideosStore();
-  
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { data: session } = useSession();
+  const { getVoiceForLanguage } = useVoiceSettings();
+
   // Try to find the video in our local store
   const videoId = sentence.video_url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/)?.[1];
   const storedVideo = videoId ? videos.find(v => v.id === videoId) : null;
@@ -38,8 +49,80 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
     }
   };
 
+  const playAudio = async (text: string, language: string) => {
+    if (isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    setAudioLoading(true);
+    try {
+      const voice = getVoiceForLanguage(language);
+      
+      console.log('Using voice:', voice?.id);
+
+      const response = await fetch("http://localhost:5000/api/audio/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.accessToken}`,
+        },
+        body: JSON.stringify({
+          sentence: text,
+          sentence_id: sentence.id,
+          voice_id: voice?.id || 'jorge',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Audio API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`API error: ${response.status} ${errorText}`);
+      }
+
+      // Get the audio blob from the response
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+
+      console.log('Audio URL:', url);
+
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.onloadeddata = () => {
+          audioRef.current?.play();
+          setIsPlaying(true);
+        };
+        audioRef.current.onerror = () => {
+          console.error('Error loading audio');
+          setIsPlaying(false);
+          setAudioLoading(false);
+        };
+      }
+    } catch (error) {
+      console.error('Error details:', error);
+      toast({
+        variant: "destructive",
+        title: "❌ Error",
+        description: error instanceof Error ? error.message : "Failed to generate audio",
+      });
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
+      <audio 
+        ref={audioRef}
+        onEnded={() => setIsPlaying(false)}
+        onPause={() => setIsPlaying(false)}
+        hidden
+      />
       <div className="space-y-4">
         {/* Video info */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -63,9 +146,22 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-lg">{getLanguageEmoji(sentence.original_language)}</span>
-            <span className="text-sm text-muted-foreground">
-              {sentence.source === "youtube" ? "YouTube" : "Whisper AI"}
-            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
+              onClick={() => playAudio(sentence.original_text, sentence.original_language)}
+              disabled={audioLoading || !session}
+            >
+              {audioLoading ? (
+                <span className="animate-spin">⏳</span>
+              ) : (
+                <Volume2 className={cn(
+                  "w-4 h-4",
+                  isPlaying && "text-primary animate-pulse"
+                )} />
+              )}
+            </Button>
           </div>
           <p className="text-lg font-serif leading-relaxed">{sentence.original_text}</p>
         </div>
@@ -75,9 +171,6 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-lg">{getLanguageEmoji(sentence.target_language)}</span>
-              <span className="text-sm text-muted-foreground">
-                {sentence.translation_source === "youtube" ? "YouTube" : "AI Translated"}
-              </span>
             </div>
             <p className="text-muted-foreground">{sentence.translated_text}</p>
           </div>
@@ -91,10 +184,10 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
               size="sm"
               asChild
             >
-              <a href={`/videos/${storedVideo.id}?t=${Math.floor(sentence.timestamp)}`}>
+              <Link href={`/videos/${storedVideo.id}?t=${Math.floor(sentence.timestamp)}`}>
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Open in App
-              </a>
+                Watch Again
+              </Link>
             </Button>
           ) : (
             <Button
