@@ -28,6 +28,7 @@ interface VideoPlayerProps {
   };
   audioLanguage?: string;
   targetLanguage?: string;
+  isLoading?: boolean;
 }
 
 export function VideoPlayer({ 
@@ -36,7 +37,8 @@ export function VideoPlayer({
   transcript, 
   translation,
   audioLanguage = "es",
-  targetLanguage = "en" 
+  targetLanguage = "en",
+  isLoading = false,
 }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null);
   const originalTranscriptRef = useRef<HTMLDivElement>(null);
@@ -55,13 +57,20 @@ export function VideoPlayer({
 
   const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
 
-  const getCurrentSubtitle = (subtitles: Subtitle[]) => {
+  const getCurrentSubtitle = (subtitles?: Subtitle[]) => {
+    if (!subtitles || !Array.isArray(subtitles)) return null;
+    
     return subtitles.find(
       (item) => 
         currentTime >= item.start && 
         currentTime <= (item.start + item.duration)
     );
   };
+
+  const hasValidTranscript = transcript?.data && Array.isArray(transcript.data);
+  const hasValidTranslation = translation?.data && Array.isArray(translation.data);
+  const hasTranscriptError = !hasValidTranscript;
+  const hasTranslationError = translation && !hasValidTranslation;
 
   // Auto-scroll logic - only when playing
   useEffect(() => {
@@ -138,45 +147,10 @@ export function VideoPlayer({
     console.log("Show details for:", original, translation);
   };
 
-  const hasTranslationError = translation && !translation.data;
-  const hasValidTranslation = translation && translation.data;
-
   return (
     <div className="relative space-y-4">
-      {/* Subtitle controls */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <Switch
-            id="floating-subtitles"
-            checked={showFloatingSubtitles}
-            onCheckedChange={setShowFloatingSubtitles}
-            className="font-inter"
-          />
-          <Label htmlFor="floating-subtitles">Show floating subtitles</Label>
-        </div>
-        {showFloatingSubtitles && (
-          <>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="original-subtitle"
-                checked={showOriginalSubtitle}
-                onCheckedChange={setShowOriginalSubtitle}
-              />
-              <Label htmlFor="original-subtitle">Show original</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="translation-subtitle"
-                checked={showTranslationSubtitle}
-                onCheckedChange={setShowTranslationSubtitle}
-              />
-              <Label htmlFor="translation-subtitle">Show translation</Label>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="relative">
+      {/* Video player with reduced max-width */}
+      <div className="relative mx-auto">
         <div className="aspect-video">
           <ReactPlayer
             ref={playerRef}
@@ -193,9 +167,9 @@ export function VideoPlayer({
           />
         </div>
 
-        {/* Floating subtitles */}
-        {showFloatingSubtitles && (
-          <div className="absolute bottom-16 left-0 right-0 mx-auto w-[90%] space-y-2">
+        {/* Floating subtitles positioned higher */}
+        {showFloatingSubtitles && !isLoading && (
+          <div className="absolute bottom-12 left-0 right-0 mx-auto w-[90%] space-y-2">
             {showOriginalSubtitle && (
               <div className="min-h-[60px] bg-black/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
@@ -203,9 +177,15 @@ export function VideoPlayer({
                     {getLanguageEmoji(audioLanguage)}
                   </span>
                 </div>
-                <p className="text-center flex-1">
-                  {getCurrentSubtitle(transcript.data)?.text || " "}
-                </p>
+                {hasTranscriptError ? (
+                  <p className="text-center flex-1 text-red-400">
+                    No captions available
+                  </p>
+                ) : (
+                  <p className="text-center flex-1">
+                    {getCurrentSubtitle(transcript.data)?.text || " "}
+                  </p>
+                )}
               </div>
             )}
             {showTranslationSubtitle && (
@@ -216,13 +196,12 @@ export function VideoPlayer({
                   </span>
                 </div>
                 {hasTranslationError ? (
-                  <div className="flex items-center gap-2 text-destructive-foreground">
-                    <AlertCircle className="h-4 w-4" />
-                    <p>Failed to load translation</p>
-                  </div>
+                  <p className="text-center flex-1 text-red-400">
+                    Translation not available
+                  </p>
                 ) : (
                   <p className="text-center flex-1">
-                    {hasValidTranslation && getCurrentSubtitle(translation.data)?.text || " "}
+                    {getCurrentSubtitle(translation?.data)?.text || " "}
                   </p>
                 )}
               </div>
@@ -231,118 +210,175 @@ export function VideoPlayer({
         )}
       </div>
 
-      {/* Full transcript */}
-      <Card className="p-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div 
-            ref={originalTranscriptRef}
-            className="h-[300px] overflow-y-auto relative"
-            onScroll={handleScroll}
-          >
-            <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
-              <span className="text-lg" role="img" aria-label={audioLanguage}>
-                {getLanguageEmoji(audioLanguage)}
-              </span>
-              <h3 className="font-bold">Original</h3>
-              <Badge variant={transcript.source === "youtube" ? "secondary" : "default"}>
-                {transcript.source === "youtube" ? "YouTube" : "Whisper AI"}
-              </Badge>
-            </div>
-            {transcript.data.map((item, index) => (
-              <div
-                key={`transcript-${index}-${item.duration}`}
-                id={`original-${item.start}`}
-                className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
-                  currentTime >= item.start && 
-                  currentTime <= (item.start + item.duration)
-                    ? "bg-primary/10"
-                    : ""
-                }`}
-                onClick={() => handleSubtitleClick(item.start)}
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex-1">
-                    <span className="text-sm text-muted-foreground">
-                      {formatTime(item.start)}
-                    </span>
-                    <p className="font-inter">{item.text}</p>
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 shrink-0">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSaveSentence(item);
-                      }}
-                      className="p-1 hover:bg-primary/20 rounded"
-                    >
-                      <Star className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShowDetails(item, translation?.data[index]);
-                      }}
-                      className="p-1 hover:bg-primary/20 rounded"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+      {/* Controls and transcripts */}
+      <div className="max-w-[800px] mx-auto">
+        {isLoading ? (
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-muted rounded" />
+            <Card className="p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="h-[300px] bg-muted rounded" />
+                <div className="h-[300px] bg-muted rounded" />
               </div>
-            ))}
+            </Card>
           </div>
-          <div 
-            ref={translationTranscriptRef}
-            className="h-[300px] overflow-y-auto border-l pl-4 relative"
-            onScroll={handleScroll}
-          >
-            <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
-              <span className="text-lg" role="img" aria-label={targetLanguage}>
-                {getLanguageEmoji(targetLanguage)}
-              </span>
-              <h3 className="font-semibold">Translation</h3>
-              {hasTranslationError ? (
-                <Badge >Error</Badge>
-              ) : (
-                <Badge variant={translation?.source === "youtube_translation" ? "secondary" : "default"}>
-                  {translation?.source === "youtube_translation" ? "YouTube" : "AI Translated"}
-                </Badge>
+        ) : (
+          <>
+            {/* Subtitle controls */}
+            <div className="flex items-center gap-6 mb-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="floating-subtitles"
+                  checked={showFloatingSubtitles}
+                  onCheckedChange={setShowFloatingSubtitles}
+                  className="font-inter"
+                />
+                <Label htmlFor="floating-subtitles">Show floating subtitles</Label>
+              </div>
+              {showFloatingSubtitles && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="original-subtitle"
+                      checked={showOriginalSubtitle}
+                      onCheckedChange={setShowOriginalSubtitle}
+                    />
+                    <Label htmlFor="original-subtitle">Show original</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="translation-subtitle"
+                      checked={showTranslationSubtitle}
+                      onCheckedChange={setShowTranslationSubtitle}
+                    />
+                    <Label htmlFor="translation-subtitle">Show translation</Label>
+                  </div>
+                </>
               )}
             </div>
-            
-            {hasTranslationError ? (
-              <div className="flex flex-col items-center justify-center h-[calc(100%-4rem)] text-muted-foreground">
-                <AlertCircle className="h-8 w-8 mb-2" />
-                <p>Failed to load translation</p>
-                <p className="text-sm">Please try refreshing the page</p>
-              </div>
-            ) : (
-              hasValidTranslation && translation.data.map((item, index) => (
-                <div
-                  key={index}
-                  id={`translation-${item.start}`}
-                  className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
-                    currentTime >= item.start && 
-                    currentTime <= (item.start + item.duration)
-                      ? "bg-primary/10"
-                      : ""
-                  }`}
-                  onClick={() => handleSubtitleClick(item.start)}
+
+            {/* Full transcript */}
+            <Card className="p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div 
+                  ref={originalTranscriptRef}
+                  className="h-[300px] overflow-y-auto relative"
+                  onScroll={handleScroll}
                 >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1">
-                      <span className="text-sm text-muted-foreground">
-                        {formatTime(item.start)}
-                      </span>
-                      <p>{item.text}</p>
-                    </div>
+                  <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
+                    <span className="text-lg" role="img" aria-label={audioLanguage}>
+                      {getLanguageEmoji(audioLanguage)}
+                    </span>
+                    <h3 className="font-bold">Original</h3>
+                    <Badge variant={transcript.source === "youtube" ? "secondary" : "default"}>
+                      {transcript.source === "youtube" ? "YouTube" : "Whisper AI"}
+                    </Badge>
                   </div>
+                  {hasTranscriptError ? (
+                    <div className="flex flex-col items-center justify-center h-[calc(100%-4rem)] text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mb-2" />
+                      <p>No captions available</p>
+                    </div>
+                  ) : (
+                    transcript.data.map((item, index) => (
+                      <div
+                        key={`transcript-${index}-${item.duration}`}
+                        id={`original-${item.start}`}
+                        className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
+                          currentTime >= item.start && 
+                          currentTime <= (item.start + item.duration)
+                            ? "bg-primary/10"
+                            : ""
+                        }`}
+                        onClick={() => handleSubtitleClick(item.start)}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1">
+                            <span className="text-sm text-muted-foreground">
+                              {formatTime(item.start)}
+                            </span>
+                            <p className="font-inter">{item.text}</p>
+                          </div>
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSaveSentence(item);
+                              }}
+                              className="p-1 hover:bg-primary/20 rounded"
+                            >
+                              <Star className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShowDetails(item, translation?.data[index]);
+                              }}
+                              className="p-1 hover:bg-primary/20 rounded"
+                            >
+                              <Info className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      </Card>
+                <div 
+                  ref={translationTranscriptRef}
+                  className="h-[300px] overflow-y-auto border-l pl-4 relative"
+                  onScroll={handleScroll}
+                >
+                  <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
+                    <span className="text-lg" role="img" aria-label={targetLanguage}>
+                      {getLanguageEmoji(targetLanguage)}
+                    </span>
+                    <h3 className="font-semibold">Translation</h3>
+                    {hasTranslationError ? (
+                      <Badge >Error</Badge>
+                    ) : (
+                      <Badge variant={translation?.source === "youtube_translation" ? "secondary" : "default"}>
+                        {translation?.source === "youtube_translation" ? "YouTube" : "AI Translated"}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {hasTranslationError ? (
+                    <div className="flex flex-col items-center justify-center h-[calc(100%-4rem)] text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mb-2" />
+                      <p>Failed to load translation</p>
+                      <p className="text-sm">Please try refreshing the page</p>
+                    </div>
+                  ) : (
+                    hasValidTranslation && translation.data.map((item, index) => (
+                      <div
+                        key={index}
+                        id={`translation-${item.start}`}
+                        className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
+                          currentTime >= item.start && 
+                          currentTime <= (item.start + item.duration)
+                            ? "bg-primary/10"
+                            : ""
+                        }`}
+                        onClick={() => handleSubtitleClick(item.start)}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1">
+                            <span className="text-sm text-muted-foreground">
+                              {formatTime(item.start)}
+                            </span>
+                            <p>{item.text}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </Card>
+          </>
+        )}
+      </div>
     </div>
   );
 }

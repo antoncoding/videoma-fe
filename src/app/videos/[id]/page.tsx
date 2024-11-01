@@ -97,36 +97,11 @@ export default function VideoPage() {
     );
   }
 
-  if (isInitialLoad) {
-    return (
-      <div className="space-y-4">
-        <div className="animate-pulse h-8 w-48 bg-muted rounded" />
-        <div className="aspect-video bg-muted rounded-lg" />
-      </div>
-    );
-  }
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (!transcriptData) {
-    return <div>No transcript data available</div>;
-  }
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
+    <div className="max-w-[800px] mx-auto">
+      <div className="flex items-center justify-between mb-8">
         {isEditing ? (
-          <div className="flex items-center gap-2 flex-1 max-w-md">
+          <div className="flex items-center gap-2 flex-1">
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -161,7 +136,59 @@ export default function VideoPage() {
         )}
       </div>
 
-      {transcriptData?.status === "success" && (
+      {loading ? (
+        <div className="space-y-8">
+          <VideoPlayer
+            videoId={video.id}
+            videoUrl={video.url}
+            transcript={{ source: "loading", data: [] }}
+            audioLanguage={video.language}
+            targetLanguage="en"
+            isLoading={true}
+          />
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-muted rounded w-full" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-16 bg-muted rounded" />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-16 bg-muted rounded" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="space-y-8">
+          <VideoPlayer
+            videoId={video.id}
+            videoUrl={video.url}
+            transcript={{ source: "error", data: [] }}
+            audioLanguage={video.language}
+            targetLanguage="en"
+            isLoading={false}
+          />
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      ) : !transcriptData ? (
+        <div className="space-y-8">
+          <VideoPlayer
+            videoId={video.id}
+            videoUrl={video.url}
+            transcript={{ source: "error", data: [] }}
+            audioLanguage={video.language}
+            targetLanguage="en"
+            isLoading={false}
+          />
+          <div>No transcript data available</div>
+        </div>
+      ) : (
         <VideoPlayer
           videoId={video.id}
           videoUrl={video.url}
@@ -169,6 +196,7 @@ export default function VideoPage() {
           translation={transcriptData.translation}
           audioLanguage={video.language}
           targetLanguage="en"
+          isLoading={false}
         />
       )}
     </div>

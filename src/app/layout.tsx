@@ -23,8 +23,11 @@ export default function RootLayout({
           <div className="flex min-h-screen">
             <Sidebar />
             <div className="flex-1 ml-64">
-              <main className="p-8">{children}</main>
+              <div className="max-w-[1200px] mx-auto px-8">
+                <main className="py-8">{children}</main>
+              </div>
             </div>
+            <div className="w-64 shrink-0" />
           </div>
           <Toaster />
         </Providers>
