@@ -22,7 +22,8 @@ export const useVideosStore = create<VideosState>()(
       videos: [],
       addVideo: (video) => 
         set((state) => ({
-          videos: [
+          // only add video if it doesn't already exist
+          videos: state.videos.find((v) => v.id === video.id) ? state.videos : [
             { ...video, addedAt: new Date() },
             ...state.videos,
           ],

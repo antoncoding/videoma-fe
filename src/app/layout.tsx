@@ -7,8 +7,8 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: "Learn with Clips",
-  description: "Learn languages with YouTube clips",
+  title: "Vidioma",
+  description: "Learn languages through immersive video experiences",
 };
 
 export default function RootLayout({

@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSentenceManager } from "@/hooks/useSentenceManager";
-import { Trash2, ExternalLink, Star, Clock } from "lucide-react";
-import { formatDistanceToNow } from 'date-fns';
+import { SentenceCard } from "@/components/saved/sentence-card";
 
 interface SavedSentence {
   id: number;
@@ -74,14 +71,6 @@ export default function SavedPage() {
     }
   };
 
-  const getLanguageEmoji = (lang: string) => {
-    switch (lang.toLowerCase()) {
-      case 'es': return '🇪🇸';
-      case 'en': return '🇬🇧';
-      default: return '🌐';
-    }
-  };
-
   if (status === "loading") {
     return <div>Loading...</div>;
   }
@@ -95,62 +84,11 @@ export default function SavedPage() {
       <h1 className="text-2xl font-montserrat mb-8">Saved Sentences</h1>
       <div className="space-y-6">
         {sentences.map((sentence) => (
-          <Card key={sentence.id} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="space-y-4">
-              {/* Video info */}
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>{formatDistanceToNow(new Date(sentence.created_at), { addSuffix: true })}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4" />
-                  <span className="truncate max-w-[200px]">{sentence.video_title}</span>
-                </div>
-              </div>
-
-              {/* Original text */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{getLanguageEmoji(sentence.original_language)}</span>
-                </div>
-                <p className="text-lg font-serif leading-relaxed">{sentence.original_text}</p>
-              </div>
-
-              {/* Translation */}
-              {sentence.translated_text && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{getLanguageEmoji(sentence.target_language)}</span>
-                  </div>
-                  <p className="text-muted-foreground">{sentence.translated_text}</p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(
-                    `${sentence.video_url}?t=${Math.floor(sentence.timestamp)}`,
-                    '_blank'
-                  )}
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Watch
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => onDelete(sentence.id)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <SentenceCard 
+            key={sentence.id}
+            sentence={sentence}
+            onDelete={onDelete}
+          />
         ))}
       </div>
     </div>

@@ -6,9 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Star, Info } from "lucide-react";
-import { useSession, signIn } from "next-auth/react";
-import { useSentences } from '@/hooks/useSentences';
+import { Star, Info, AlertCircle } from "lucide-react";
 import { useSentenceManager } from '@/hooks/useSentenceManager';
 
 interface Subtitle {
@@ -50,9 +48,10 @@ export function VideoPlayer({
   const [showFloatingSubtitles, setShowFloatingSubtitles] = useState(true);
   const [showOriginalSubtitle, setShowOriginalSubtitle] = useState(true);
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   console.log('transcript.data', transcript.data)
-  console.log('translation.data', translation?.data)
+  console.log('translation.data', translation)
 
   const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
 
@@ -64,9 +63,9 @@ export function VideoPlayer({
     );
   };
 
-  // Auto-scroll logic
+  // Auto-scroll logic - only when playing
   useEffect(() => {
-    if (!isUserScrolling) {
+    if (!isUserScrolling && isPlaying) {
       const currentOriginal = getCurrentSubtitle(transcript.data);
       const currentTranslation = translation && getCurrentSubtitle(translation.data);
 
@@ -80,7 +79,7 @@ export function VideoPlayer({
         translationElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [currentTime, isUserScrolling, transcript, translation]);
+  }, [currentTime, isUserScrolling, transcript, translation, isPlaying]);
 
   const handleScroll = () => {
     setIsUserScrolling(true);
@@ -139,6 +138,9 @@ export function VideoPlayer({
     console.log("Show details for:", original, translation);
   };
 
+  const hasTranslationError = translation && !translation.data;
+  const hasValidTranslation = translation && translation.data;
+
   return (
     <div className="relative space-y-4">
       {/* Subtitle controls */}
@@ -184,6 +186,9 @@ export function VideoPlayer({
             controls
             onProgress={handleProgress}
             onReady={() => setIsReady(true)}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => setIsPlaying(false)}
             className="rounded-lg"
           />
         </div>
@@ -203,16 +208,23 @@ export function VideoPlayer({
                 </p>
               </div>
             )}
-            {translation && showTranslationSubtitle && (
+            {showTranslationSubtitle && (
               <div className="min-h-[60px] bg-primary/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
                   <span className="text-lg" role="img" aria-label={targetLanguage}>
                     {getLanguageEmoji(targetLanguage)}
                   </span>
                 </div>
-                <p className="text-center flex-1">
-                  {getCurrentSubtitle(translation.data)?.text || " "}
-                </p>
+                {hasTranslationError ? (
+                  <div className="flex items-center gap-2 text-destructive-foreground">
+                    <AlertCircle className="h-4 w-4" />
+                    <p>Failed to load translation</p>
+                  </div>
+                ) : (
+                  <p className="text-center flex-1">
+                    {hasValidTranslation && getCurrentSubtitle(translation.data)?.text || " "}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -279,22 +291,33 @@ export function VideoPlayer({
               </div>
             ))}
           </div>
-          {translation && (
-            <div 
-              ref={translationTranscriptRef}
-              className="h-[300px] overflow-y-auto border-l pl-4 relative"
-              onScroll={handleScroll}
-            >
-              <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
-                <span className="text-lg" role="img" aria-label={targetLanguage}>
-                  {getLanguageEmoji(targetLanguage)}
-                </span>
-                <h3 className="font-semibold">Translation</h3>
-                <Badge variant={translation.source === "youtube_translation" ? "secondary" : "default"}>
-                  {translation.source === "youtube_translation" ? "YouTube" : "AI Translated"}
+          <div 
+            ref={translationTranscriptRef}
+            className="h-[300px] overflow-y-auto border-l pl-4 relative"
+            onScroll={handleScroll}
+          >
+            <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
+              <span className="text-lg" role="img" aria-label={targetLanguage}>
+                {getLanguageEmoji(targetLanguage)}
+              </span>
+              <h3 className="font-semibold">Translation</h3>
+              {hasTranslationError ? (
+                <Badge >Error</Badge>
+              ) : (
+                <Badge variant={translation?.source === "youtube_translation" ? "secondary" : "default"}>
+                  {translation?.source === "youtube_translation" ? "YouTube" : "AI Translated"}
                 </Badge>
+              )}
+            </div>
+            
+            {hasTranslationError ? (
+              <div className="flex flex-col items-center justify-center h-[calc(100%-4rem)] text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mb-2" />
+                <p>Failed to load translation</p>
+                <p className="text-sm">Please try refreshing the page</p>
               </div>
-              {translation.data.map((item, index) => (
+            ) : (
+              hasValidTranslation && translation.data.map((item, index) => (
                 <div
                   key={index}
                   id={`translation-${item.start}`}
@@ -315,9 +338,9 @@ export function VideoPlayer({
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </Card>
     </div>
