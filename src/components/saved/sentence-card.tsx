@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, ExternalLink, Star, Clock, Volume2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { useVideosStore } from "@/store/videos";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -51,6 +51,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
 
   const playAudio = async (text: string, language: string) => {
     if (isPlaying) {
+      console.log('Stopping current audio');
       audioRef.current?.pause();
       setIsPlaying(false);
       return;
@@ -59,10 +60,10 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
     setAudioLoading(true);
     try {
       const voice = getVoiceForLanguage(language);
-      
       console.log('Using voice:', voice?.id);
 
-      const response = await fetch("http://localhost:5000/api/audio/generate", {
+      // Step 1: Generate audio
+      const generateResponse = await fetch("http://localhost:5000/api/audio/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,36 +76,86 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Audio API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`API error: ${response.status} ${errorText}`);
+      if (!generateResponse.ok) {
+        const errorData = await generateResponse.json();
+        throw new Error(errorData.message || 'Failed to generate audio');
+      }
+
+      const { audio_id } = await generateResponse.json();
+      console.log('Generated audio ID:', audio_id);
+
+      // Step 2: Fetch the audio file
+      const audioResponse = await fetch(`http://localhost:5000/api/audio/${audio_id}`, {
+        headers: {
+          "Authorization": `Bearer ${session?.accessToken}`,
+        },
+      });
+
+      if (!audioResponse.ok) {
+        const errorData = await audioResponse.json();
+        throw new Error(errorData.message || 'Failed to fetch audio');
       }
 
       // Get the audio blob from the response
-      const audioBlob = await response.blob();
-      const url = URL.createObjectURL(audioBlob);
+      const audioBlob = await audioResponse.blob();
+      console.log('Received audio blob:', {
+        size: audioBlob.size,
+        type: audioBlob.type
+      });
 
-      console.log('Audio URL:', url);
+      const url = URL.createObjectURL(audioBlob);
+      console.log('Created URL:', url);
 
       if (audioRef.current) {
+        // Clean up previous URL if it exists
+        if (audioRef.current.src) {
+          URL.revokeObjectURL(audioRef.current.src);
+        }
+
         audioRef.current.src = url;
+        
         audioRef.current.onloadeddata = () => {
-          audioRef.current?.play();
-          setIsPlaying(true);
+          console.log('Audio loaded, starting playback');
+          audioRef.current?.play()
+            .then(() => {
+              console.log('Playback started');
+              setIsPlaying(true);
+            })
+            .catch(error => {
+              console.error('Playback failed:', error);
+              setIsPlaying(false);
+              toast({
+                variant: "destructive",
+                title: "❌ Error",
+                description: "Failed to play audio",
+              });
+            });
         };
-        audioRef.current.onerror = () => {
-          console.error('Error loading audio');
+        
+        audioRef.current.onerror = (e) => {
+          console.error('Audio loading error:', e);
           setIsPlaying(false);
           setAudioLoading(false);
+          toast({
+            variant: "destructive",
+            title: "❌ Error",
+            description: "Failed to load audio",
+          });
+        };
+
+        audioRef.current.onended = () => {
+          console.log('Audio playback completed');
+          setIsPlaying(false);
+          URL.revokeObjectURL(url);
+        };
+
+        audioRef.current.onpause = () => {
+          console.log('Audio paused');
+          setIsPlaying(false);
         };
       }
     } catch (error) {
-      console.error('Error details:', error);
+      console.error('Detailed error:', error);
       toast({
         variant: "destructive",
         title: "❌ Error",
@@ -114,6 +165,15 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
       setAudioLoading(false);
     }
   };
+
+  // Clean up URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioRef.current?.src) {
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+    };
+  }, []);
 
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
