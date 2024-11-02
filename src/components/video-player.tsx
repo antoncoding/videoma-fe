@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Star, Info, AlertCircle } from "lucide-react";
 import { useSentenceManager } from '@/hooks/useSentenceManager';
+import { useSettingsStore } from '@/store/settings';
 
 interface Subtitle {
   text: string;
@@ -27,7 +28,6 @@ interface VideoPlayerProps {
     data: Subtitle[];
   };
   audioLanguage?: string;
-  targetLanguage?: string;
   isLoading?: boolean;
   initialTime?: number;
 }
@@ -37,8 +37,7 @@ export function VideoPlayer({
   videoId,
   transcript, 
   translation,
-  audioLanguage = "es",
-  targetLanguage = "en",
+  audioLanguage = 'es',
   isLoading = false,
   initialTime = 0,
 }: VideoPlayerProps) {
@@ -53,6 +52,9 @@ export function VideoPlayer({
   const [showOriginalSubtitle, setShowOriginalSubtitle] = useState(true);
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const { settings } = useSettingsStore();
+  const targetLanguage = settings.nativeLanguage || 'en';
 
   console.log('transcript.data', transcript.data)
   console.log('translation.data', translation)
@@ -109,12 +111,14 @@ export function VideoPlayer({
     }
   };
 
-  const getLanguageEmoji = (lang: string) => {
+  const getLanguageEmoji = (lang: string = 'en') => {
     switch (lang.toLowerCase()) {
       case 'es':
         return '🇪🇸';
       case 'en':
         return '🇬🇧';
+      case 'fr':
+        return '🇫🇷';
       default:
         return '🌐';
     }

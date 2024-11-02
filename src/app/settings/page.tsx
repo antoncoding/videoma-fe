@@ -49,6 +49,7 @@ interface LanguageVoiceSettings {
 }
 
 interface UserSettings {
+  nativeLanguage: string;
   targetLanguages: Array<{ code: string; level: string }>;
   languageVoices: Record<string, LanguageVoiceSettings>;
 }
@@ -62,6 +63,7 @@ export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set: any) => ({
       settings: {
+        nativeLanguage: "en",
         targetLanguages: [{ code: "es", level: "beginner" }],
         languageVoices: {},
       },
@@ -268,6 +270,33 @@ export default function SettingsPage() {
         </div>
         <Button onClick={handleSave}>Save All Changes</Button>
       </div>
+
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Native Language</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {LANGUAGES.map((lang) => (
+            <Card
+              key={lang.code}
+              className={cn(
+                "p-4 cursor-pointer hover:border-primary transition-colors",
+                localSettings.nativeLanguage === lang.code && "border-primary bg-primary/5"
+              )}
+              onClick={() => setLocalSettings(prev => ({
+                ...prev,
+                nativeLanguage: lang.code
+              }))}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{lang.flag}</span>
+                <div>
+                  <p className="font-medium">{lang.label}</p>
+                  <p className="text-sm text-muted-foreground">Native</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </Card>
 
       <div className="grid gap-6">
         {localSettings.targetLanguages.map((lang, index) => (

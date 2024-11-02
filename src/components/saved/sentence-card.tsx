@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "@/components/ui/use-toast";
 import { useVoiceSettings } from "@/hooks/useVoiceSettings";
+import { useAudioStore } from '@/store/audio';
 
 interface SavedSentence {
   id: number;
@@ -36,6 +37,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { data: session } = useSession();
   const { getVoiceForLanguage } = useVoiceSettings();
+  const { getFromCache, addToCache } = useAudioStore();
 
   // Try to find the video in our local store
   const videoId = sentence.video_url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/)?.[1];
@@ -62,36 +64,53 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
       const voice = getVoiceForLanguage(language);
       console.log('Using voice:', voice?.id);
 
-      // Step 1: Generate audio
-      const generateResponse = await fetch("http://localhost:5000/api/audio/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.accessToken}`,
-        },
-        body: JSON.stringify({
-          sentence: text,
-          sentence_id: sentence.id,
-          voice_id: voice?.id || 'jorge',
-        }),
-      });
+      // Check cache first
+      let audioId = getFromCache(sentence.id);
+      
+      if (!audioId) {
+        // Generate new audio if not in cache
+        const generateResponse = await fetch("http://localhost:5000/api/audio/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.accessToken}`,
+          },
+          body: JSON.stringify({
+            sentence: text,
+            sentence_id: sentence.id,
+            voice_id: voice?.id || 'jorge',
+          }),
+        });
 
-      if (!generateResponse.ok) {
-        const errorData = await generateResponse.json();
-        throw new Error(errorData.message || 'Failed to generate audio');
+        if (!generateResponse.ok) {
+          const errorData = await generateResponse.json();
+          throw new Error(errorData.message || 'Failed to generate audio');
+        }
+
+        const { audio_id } = await generateResponse.json();
+        console.log('Generated new audio ID:', audio_id);
+        
+        // Save to cache
+        addToCache(sentence.id, audio_id);
+        audioId = audio_id;
+      } else {
+        console.log('Using cached audio ID:', audioId);
       }
 
-      const { audio_id } = await generateResponse.json();
-      console.log('Generated audio ID:', audio_id);
-
-      // Step 2: Fetch the audio file
-      const audioResponse = await fetch(`http://localhost:5000/api/audio/${audio_id}`, {
+      // Fetch the audio file using the ID (either from cache or newly generated)
+      const audioResponse = await fetch(`http://localhost:5000/api/audio/${audioId}`, {
         headers: {
           "Authorization": `Bearer ${session?.accessToken}`,
         },
       });
 
       if (!audioResponse.ok) {
+        if (audioResponse.status === 404) {
+          // If audio not found, remove from cache and try generating again
+          console.log('Cached audio not found, regenerating...');
+          addToCache(sentence.id, 0); // Clear cache
+          throw new Error('Cached audio not found');
+        }
         const errorData = await audioResponse.json();
         throw new Error(errorData.message || 'Failed to fetch audio');
       }
@@ -156,6 +175,14 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
       }
     } catch (error) {
       console.error('Detailed error:', error);
+      
+      // If error was due to missing cached audio, retry once
+      if (error instanceof Error && error.message === 'Cached audio not found') {
+        console.log('Retrying audio generation...');
+        playAudio(text, language);
+        return;
+      }
+
       toast({
         variant: "destructive",
         title: "❌ Error",
