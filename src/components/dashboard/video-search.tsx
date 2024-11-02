@@ -18,6 +18,7 @@ export function VideoSearch() {
   const router = useRouter();
   const addVideo = useVideosStore((state) => state.addVideo);
   const { settings } = useSettingsStore();
+  const currentLanguage = settings.targetLanguages[0];
 
   const getYouTubeVideoId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/);
@@ -50,6 +51,15 @@ export function VideoSearch() {
       setError(error instanceof Error ? error.message : "Failed to add video");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getLevelDisplay = (level: string) => {
+    switch (level) {
+      case 'beginner': return 'Beginner';
+      case 'intermediate': return 'Intermediate';
+      case 'advanced': return 'Advanced';
+      default: return level;
     }
   };
 
@@ -91,8 +101,8 @@ export function VideoSearch() {
 
         <div className="text-sm text-muted-foreground">
           <p>
-            Learning {settings.targetLanguages[0]?.code === "es" ? "Spanish" : "French"} at{" "}
-            {settings.targetLanguages[0]?.level} level
+            Learning {currentLanguage?.code === "es" ? "Spanish" : "French"} at{" "}
+            <span className="font-medium">{getLevelDisplay(currentLanguage?.level || 'beginner')}</span> level
           </p>
         </div>
       </div>

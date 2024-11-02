@@ -85,6 +85,15 @@ export default function VideoPage() {
     }
   };
 
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTitleUpdate();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setNewTitle(video?.customTitle || "");
+    }
+  };
+
   if (!video) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -109,6 +118,7 @@ export default function VideoPage() {
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={handleTitleKeyDown}
               className="text-2xl font-bold"
               autoFocus
               placeholder="Enter video title"
@@ -147,7 +157,6 @@ export default function VideoPage() {
             videoUrl={video.url}
             transcript={{ source: "loading", data: [] }}
             audioLanguage={video.language}
-            targetLanguage="en"
             isLoading={true}
           />
           <div className="animate-pulse space-y-4">
@@ -173,7 +182,6 @@ export default function VideoPage() {
             videoUrl={video.url}
             transcript={{ source: "error", data: [] }}
             audioLanguage={video.language}
-            targetLanguage="en"
             isLoading={false}
           />
           <Alert variant="destructive">
@@ -187,7 +195,6 @@ export default function VideoPage() {
             videoUrl={video.url}
             transcript={{ source: "error", data: [] }}
             audioLanguage={video.language}
-            targetLanguage="en"
             isLoading={false}
           />
           <div>No transcript data available</div>
@@ -199,7 +206,6 @@ export default function VideoPage() {
           transcript={transcriptData.transcription}
           translation={transcriptData.translation}
           audioLanguage={video.language}
-          targetLanguage="en"
           isLoading={false}
           initialTime={initialTime}
         />

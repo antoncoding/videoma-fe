@@ -2,23 +2,12 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { VOICE_PROFILES, type VoiceProfile } from "@/constants/voices";
 import { 
-  GraduationCap, 
-  Languages, 
   Plus,
-  X,
-  ChevronRight,
   Settings2
 } from "lucide-react";
 import {
@@ -57,6 +46,7 @@ interface UserSettings {
 interface SettingsStore {
   settings: UserSettings;
   updateSettings: (settings: UserSettings) => void;
+  updateLanguageLevel: (languageCode: string, level: string) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -68,6 +58,15 @@ export const useSettingsStore = create<SettingsStore>()(
         languageVoices: {},
       },
       updateSettings: (newSettings: UserSettings) => set({ settings: newSettings }),
+      updateLanguageLevel: (languageCode, level) => 
+        set((state: SettingsStore) => ({
+          settings: {
+            ...state.settings,
+            targetLanguages: state.settings.targetLanguages.map(lang => 
+              lang.code === languageCode ? { ...lang, level } : lang
+            ),
+          },
+        })),
     }),
     {
       name: 'user-settings',
@@ -213,7 +212,7 @@ function LanguageCard({
 }
 
 export default function SettingsPage() {
-  const { settings, updateSettings } = useSettingsStore();
+  const { settings, updateSettings, updateLanguageLevel } = useSettingsStore();
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
   const { toast } = useToast();
 
@@ -242,6 +241,9 @@ export default function SettingsPage() {
         [code]: { voiceId }
       }
     }));
+    
+    // Update level immediately
+    updateLanguageLevel(code, level);
   };
 
   const handleRemoveLanguage = (index: number) => {
