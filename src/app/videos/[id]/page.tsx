@@ -26,7 +26,6 @@ export default function VideoPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const startTime = searchParams.get('t'); // Get timestamp from URL
-  
   const { videos, updateVideoTitle } = useVideosStore();
   const video = videos.find((v) => v.id === params.id);
   
@@ -57,7 +56,7 @@ export default function VideoPage() {
           body: JSON.stringify({
             video_url: video.url,
             audio_language: video.language,
-            target_language: "en",
+            target_language: 'en', // native language if no target language is specified
           }),
         });
 

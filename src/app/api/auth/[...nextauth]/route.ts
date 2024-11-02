@@ -29,7 +29,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       // On subsequent calls, check if token needs refresh
-      const shouldRefreshTime = Math.round((token.exp ?? 0) - 60 * 60 * 1000); // 1 hour before expiry
+      const shouldRefreshTime = Math.round((token.exp as number ?? 0) - 60 * 60 * 1000); // 1 hour before expiry
       if (shouldRefreshTime > Date.now()) {
         return token;
       }
@@ -62,8 +62,8 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
-      session.error = token.error;
+      session.accessToken = token.accessToken as string | undefined;
+      session.error = token.error as string | undefined;
       return session;
     },
   },

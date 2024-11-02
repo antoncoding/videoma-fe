@@ -5,11 +5,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { VOICE_PROFILES, type VoiceProfile } from "@/constants/voices";
-import { 
-  Plus,
-  Settings2
-} from "lucide-react";
+import { LANGUAGES } from "@/constants/languages";
+import { LEVELS, type LevelValue } from "@/constants/levels";
+import { VOICE_PROFILES } from "@/constants/voices";
+import { useLanguageSettings } from "@/hooks/useLanguageSettings";
 import {
   Dialog,
   DialogContent,
@@ -18,61 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-const LANGUAGES = [
-  { code: "es", label: "Spanish", flag: "🇪🇸" },
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "fr", label: "French", flag: "🇫🇷" },
-] as const;
-
-const LEVELS = [
-  { value: "beginner", label: "Beginner", description: "Just starting out" },
-  { value: "intermediate", label: "Intermediate", description: "Can handle basic conversations" },
-  { value: "advanced", label: "Advanced", description: "Comfortable with complex topics" },
-] as const;
-
-interface LanguageVoiceSettings {
-  voiceId: string;
-}
-
-interface UserSettings {
-  nativeLanguage: string;
-  targetLanguages: Array<{ code: string; level: string }>;
-  languageVoices: Record<string, LanguageVoiceSettings>;
-}
-
-interface SettingsStore {
-  settings: UserSettings;
-  updateSettings: (settings: UserSettings) => void;
-  updateLanguageLevel: (languageCode: string, level: string) => void;
-}
-
-export const useSettingsStore = create<SettingsStore>()(
-  persist(
-    (set: any) => ({
-      settings: {
-        nativeLanguage: "en",
-        targetLanguages: [{ code: "es", level: "beginner" }],
-        languageVoices: {},
-      },
-      updateSettings: (newSettings: UserSettings) => set({ settings: newSettings }),
-      updateLanguageLevel: (languageCode, level) => 
-        set((state: SettingsStore) => ({
-          settings: {
-            ...state.settings,
-            targetLanguages: state.settings.targetLanguages.map(lang => 
-              lang.code === languageCode ? { ...lang, level } : lang
-            ),
-          },
-        })),
-    }),
-    {
-      name: 'user-settings',
-    }
-  )
-);
+import { Settings2 } from "lucide-react";
 
 function LanguageCard({ 
   language, 
@@ -82,23 +27,27 @@ function LanguageCard({
   onRemove,
 }: { 
   language: string;
-  level: string;
+  level: LevelValue;
   voiceId: string;
-  onUpdate: (code: string, level: string, voiceId: string) => void;
+  onUpdate: (code: string, level: LevelValue, voiceId: string) => void;
   onRemove: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const langInfo = LANGUAGES.find(l => l.code === language);
-  const levelInfo = LEVELS.find(l => l.value === level);
-  const voices = VOICE_PROFILES[language as keyof typeof VOICE_PROFILES] || [];
-  const selectedVoice = voices.find(v => v.id === voiceId);
-
   const [localLevel, setLocalLevel] = useState(level);
   const [localVoiceId, setLocalVoiceId] = useState(voiceId);
+  const { toast } = useToast();
+
+  const langInfo = LANGUAGES[language];
+  const voices = VOICE_PROFILES[language as keyof typeof VOICE_PROFILES] || [];
+  const selectedVoice = voices.find(v => v.id === voiceId);
 
   const handleSave = () => {
     onUpdate(language, localLevel, localVoiceId);
     setIsOpen(false);
+    toast({
+      title: "✨ Class updated",
+      description: "Your class settings have been saved.",
+    });
   };
 
   return (
@@ -111,7 +60,7 @@ function LanguageCard({
                 <div className="text-4xl">{langInfo?.flag}</div>
                 <div>
                   <h3 className="text-xl font-semibold">{langInfo?.label}</h3>
-                  <p className="text-sm text-muted-foreground">{levelInfo?.label}</p>
+                  <p className="text-sm text-muted-foreground">{LEVELS.find(l => l.value === level)?.label}</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon">
@@ -211,54 +160,165 @@ function LanguageCard({
   );
 }
 
+interface AddClassDialogProps {
+  onAdd: (code: string, level: LevelValue, voiceId: string) => void;
+  existingLanguages: string[];
+}
+
+function AddClassDialog({ onAdd, existingLanguages }: AddClassDialogProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<LevelValue>("beginner");
+  const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
+
+  const availableLanguages = Object.values(LANGUAGES).filter(
+    lang => lang.available && !existingLanguages.includes(lang.code)
+  );
+
+  const voices = selectedLanguage 
+    ? VOICE_PROFILES[selectedLanguage as keyof typeof VOICE_PROFILES] || []
+    : [];
+
+  const handleAdd = () => {
+    if (selectedLanguage && selectedLevel && selectedVoice) {
+      onAdd(selectedLanguage, selectedLevel, selectedVoice);
+      setIsOpen(false);
+      // Reset selections
+      setSelectedLanguage(null);
+      setSelectedLevel("beginner");
+      setSelectedVoice(null);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="border-dashed">
+          Add New Class
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Add a New Language Class</DialogTitle>
+          <DialogDescription>
+            Choose a language and your starting level
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Language Selection */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Choose Language</h4>
+            <div className="grid grid-cols-2 gap-4">
+              {availableLanguages.map((lang) => (
+                <Card
+                  key={lang.code}
+                  className={cn(
+                    "p-4 cursor-pointer hover:border-primary transition-colors",
+                    selectedLanguage === lang.code && "border-primary bg-primary/5"
+                  )}
+                  onClick={() => {
+                    setSelectedLanguage(lang.code);
+                    setSelectedVoice(null); // Reset voice when language changes
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-4xl">{lang.flag}</span>
+                    <div>
+                      <h3 className="font-semibold">{lang.label}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {lang.nativeName}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Level Selection */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Choose Level</h4>
+            <div className="grid grid-cols-3 gap-4">
+              {LEVELS.map((level) => (
+                <Card
+                  key={level.value}
+                  className={cn(
+                    "p-4 cursor-pointer hover:border-primary transition-colors",
+                    selectedLevel === level.value && "border-primary bg-primary/5"
+                  )}
+                  onClick={() => setSelectedLevel(level.value)}
+                >
+                  <h3 className="font-semibold">{level.label}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {level.description}
+                  </p>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Teacher Selection */}
+          {selectedLanguage && (
+            <div className="space-y-4">
+              <h4 className="font-medium">Choose Your Teacher</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {voices.map((voice) => (
+                  <Card 
+                    key={voice.id}
+                    className={cn(
+                      "p-4 cursor-pointer hover:border-primary transition-colors",
+                      selectedVoice === voice.id && "border-primary bg-primary/5"
+                    )}
+                    onClick={() => setSelectedVoice(voice.id)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="shrink-0 text-2xl">
+                        {voice.gender === 'male' ? '👨‍🏫' : '👩‍🏫'}
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-semibold">{voice.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {voice.personality}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAdd}
+            disabled={!selectedLanguage || !selectedLevel || !selectedVoice}
+          >
+            Add Class
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function SettingsPage() {
-  const { settings, updateSettings, updateLanguageLevel } = useSettingsStore();
-  const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
+  const {
+    nativeLanguage,
+    targetLanguages,
+    setNativeLanguage,
+    updateClass,
+    removeClass,
+    voices,
+  } = useLanguageSettings();
   const { toast } = useToast();
 
-  const handleAddLanguage = () => {
-    setLocalSettings((prev: UserSettings) => ({
-      ...prev,
-      targetLanguages: [
-        ...prev.targetLanguages,
-        { code: LANGUAGES[0].code, level: "beginner" }
-      ],
-      languageVoices: {
-        ...prev.languageVoices,
-        [LANGUAGES[0].code]: { voiceId: VOICE_PROFILES[LANGUAGES[0].code][0].id }
-      }
-    }));
-  };
-
-  const handleUpdateLanguage = (index: number, code: string, level: string, voiceId: string) => {
-    setLocalSettings((prev: UserSettings) => ({
-      ...prev,
-      targetLanguages: prev.targetLanguages.map((lang, i) => 
-        i === index ? { code, level } : lang
-      ),
-      languageVoices: {
-        ...prev.languageVoices,
-        [code]: { voiceId }
-      }
-    }));
-    
-    // Update level immediately
-    updateLanguageLevel(code, level);
-  };
-
-  const handleRemoveLanguage = (index: number) => {
-    setLocalSettings((prev: UserSettings) => ({
-      ...prev,
-      targetLanguages: prev.targetLanguages.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleSave = () => {
-    updateSettings(localSettings);
-    toast({
-      title: "✨ Settings saved",
-      description: "Your class preferences have been updated.",
-    });
+  const handleUpdateClass = (code: string, level: LevelValue, voiceId: string) => {
+    updateClass(code, level, voiceId);
   };
 
   return (
@@ -270,58 +330,50 @@ export default function SettingsPage() {
             Manage your language learning journey
           </p>
         </div>
-        <Button onClick={handleSave}>Save All Changes</Button>
       </div>
 
       <Card className="p-6">
         <h2 className="text-lg font-semibold mb-4">Native Language</h2>
         <div className="grid grid-cols-3 gap-4">
-          {LANGUAGES.map((lang) => (
-            <Card
-              key={lang.code}
-              className={cn(
-                "p-4 cursor-pointer hover:border-primary transition-colors",
-                localSettings.nativeLanguage === lang.code && "border-primary bg-primary/5"
-              )}
-              onClick={() => setLocalSettings(prev => ({
-                ...prev,
-                nativeLanguage: lang.code
-              }))}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{lang.flag}</span>
-                <div>
-                  <p className="font-medium">{lang.label}</p>
-                  <p className="text-sm text-muted-foreground">Native</p>
+          {Object.values(LANGUAGES)
+            .filter(lang => lang.available)
+            .map((lang) => (
+              <Card
+                key={lang.code}
+                className={cn(
+                  "p-4 cursor-pointer hover:border-primary transition-colors",
+                  nativeLanguage === lang.code && "border-primary bg-primary/5"
+                )}
+                onClick={() => setNativeLanguage(lang.code)}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{lang.flag}</span>
+                  <div>
+                    <p className="font-medium">{lang.label}</p>
+                    <p className="text-sm text-muted-foreground">Native</p>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))}
         </div>
       </Card>
 
       <div className="grid gap-6">
-        {localSettings.targetLanguages.map((lang, index) => (
+        {targetLanguages.map((lang) => (
           <LanguageCard
-            key={index}
+            key={lang.code}
             language={lang.code}
             level={lang.level}
-            voiceId={localSettings.languageVoices[lang.code]?.voiceId || ''}
-            onUpdate={(code, level, voiceId) => 
-              handleUpdateLanguage(index, code, level, voiceId)
-            }
-            onRemove={() => handleRemoveLanguage(index)}
+            voiceId={voices[lang.code]?.voiceId || ''}
+            onUpdate={handleUpdateClass}
+            onRemove={() => removeClass(lang.code)}
           />
         ))}
 
-        <Button
-          variant="outline"
-          className="border-dashed"
-          onClick={handleAddLanguage}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Class
-        </Button>
+        <AddClassDialog 
+          onAdd={handleUpdateClass}
+          existingLanguages={targetLanguages.map(lang => lang.code)}
+        />
       </div>
     </div>
   );

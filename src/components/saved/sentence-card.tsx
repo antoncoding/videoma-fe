@@ -8,9 +8,8 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "@/components/ui/use-toast";
-import { useVoiceSettings } from "@/hooks/useVoiceSettings";
 import { useAudioStore } from '@/store/audio';
-
+import { useLanguageSettings } from "@/hooks/useLanguageSettings";
 interface SavedSentence {
   id: number;
   video_url: string;
@@ -36,7 +35,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { data: session } = useSession();
-  const { getVoiceForLanguage } = useVoiceSettings();
+  const { getVoiceForLanguage } = useLanguageSettings();
   const { getFromCache, addToCache } = useAudioStore();
 
   // Try to find the video in our local store
@@ -62,7 +61,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
     setAudioLoading(true);
     try {
       const voice = getVoiceForLanguage(language);
-      console.log('Using voice:', voice?.id);
+      console.log('Using voice:', voice );
 
       // Check cache first
       let audioId = getFromCache(sentence.id);
@@ -78,7 +77,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
           body: JSON.stringify({
             sentence: text,
             sentence_id: sentence.id,
-            voice_id: voice?.id || 'jorge',
+            voice_id: voice,
           }),
         });
 

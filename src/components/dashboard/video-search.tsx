@@ -5,20 +5,25 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useVideosStore } from "@/store/videos";
-import { useSettingsStore } from "@/app/settings/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Video, Languages } from "lucide-react";
 import { FaYoutube } from "react-icons/fa";
+import { LANGUAGES } from "@/constants/languages";
+import { useSettingsStore } from "@/store/settings";
 
-export function VideoSearch() {
+interface VideoSearchProps {
+  language: string;
+  level: string;
+}
+
+export function VideoSearch({ language, level }: VideoSearchProps) {
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const addVideo = useVideosStore((state) => state.addVideo);
   const { settings } = useSettingsStore();
-  const currentLanguage = settings.targetLanguages[0];
 
   const getYouTubeVideoId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/);
@@ -43,7 +48,7 @@ export function VideoSearch() {
         id: videoId,
         customTitle: 'New Video',
         url: videoUrl,
-        language: settings.targetLanguages[0]?.code || 'es',
+        language: LANGUAGES[language].code,
       });
 
       router.push(`/videos/${videoId}`);
@@ -54,24 +59,15 @@ export function VideoSearch() {
     }
   };
 
-  const getLevelDisplay = (level: string) => {
-    switch (level) {
-      case 'beginner': return 'Beginner';
-      case 'intermediate': return 'Intermediate';
-      case 'advanced': return 'Advanced';
-      default: return level;
-    }
-  };
-
   return (
     <Card className="p-6">
       <div className="space-y-4">
         <div className="flex items-center gap-4">
           <Video className="w-8 h-8 text-primary" />
           <div>
-            <h2 className="text-lg font-semibold">Start a New Lesson</h2>
+            <h2 className="text-lg font-semibold">Add a Video</h2>
             <p className="text-sm text-muted-foreground">
-              Paste a YouTube URL to start learning with video content
+              Paste a YouTube URL to start learning
             </p>
           </div>
         </div>
@@ -101,8 +97,10 @@ export function VideoSearch() {
 
         <div className="text-sm text-muted-foreground">
           <p>
-            Learning {currentLanguage?.code === "es" ? "Spanish" : "French"} at{" "}
-            <span className="font-medium">{getLevelDisplay(currentLanguage?.level || 'beginner')}</span> level
+            Learning {LANGUAGES[language].label} at{" "}
+            <span className="font-medium">
+              {level.charAt(0).toUpperCase() + level.slice(1)}
+            </span> level
           </p>
         </div>
       </div>

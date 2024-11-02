@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, Info, AlertCircle } from "lucide-react";
 import { useSentenceManager } from '@/hooks/useSentenceManager';
 import { useSettingsStore } from '@/store/settings';
+import { useLanguageSettings } from '@/hooks/useLanguageSettings';
 
 interface Subtitle {
   text: string;
@@ -54,7 +55,8 @@ export function VideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
 
   const { settings } = useSettingsStore();
-  const targetLanguage = settings.nativeLanguage || 'en';
+  const { nativeLanguage } = useLanguageSettings();
+  const targetLanguage = nativeLanguage;
 
   const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
 
