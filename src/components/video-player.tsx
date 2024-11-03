@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Star, Info, AlertCircle } from "lucide-react";
 import { useSentenceManager } from '@/hooks/useSentenceManager';
-import { useSettingsStore } from '@/store/settings';
 import { useLanguageSettings } from '@/hooks/useLanguageSettings';
+import { LANGUAGES, getLanguageEmoji } from "@/constants/languages";
 
 interface Subtitle {
   text: string;
@@ -54,9 +54,13 @@ export function VideoPlayer({
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const { settings } = useSettingsStore();
-  const { nativeLanguage } = useLanguageSettings();
-  const targetLanguage = nativeLanguage;
+  const { 
+    primaryLanguage, 
+    getAssistingLanguage,
+  } = useLanguageSettings();
+
+  // Get the preferred translation language for this specific language class
+  const translationLanguage = getAssistingLanguage(audioLanguage) || primaryLanguage;
 
   const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
 
@@ -115,19 +119,6 @@ export function VideoPlayer({
     }
   };
 
-  const getLanguageEmoji = (lang: string = 'en') => {
-    switch (lang.toLowerCase()) {
-      case 'es':
-        return '🇪🇸';
-      case 'en':
-        return '🇬🇧';
-      case 'fr':
-        return '🇫🇷';
-      default:
-        return '🌐';
-    }
-  };
-
   const onSaveSentence = async (
     original: Subtitle,
   ) => {
@@ -144,7 +135,7 @@ export function VideoPlayer({
       videoId,
       timestamp: original.start,
       audioLanguage,
-      targetLanguage,
+      targetLanguage: translationLanguage,
       source: transcript.source,
     });
   };
@@ -206,7 +197,7 @@ export function VideoPlayer({
             {showOriginalSubtitle && (
               <div className="min-h-[60px] bg-black/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
-                  <span className="text-lg" role="img" aria-label={audioLanguage}>
+                  <span className="text-lg" role="img" aria-label={LANGUAGES[audioLanguage]?.label}>
                     {getLanguageEmoji(audioLanguage)}
                   </span>
                 </div>
@@ -219,18 +210,18 @@ export function VideoPlayer({
                 </p>
               </div>
             )}
-            {showTranslationSubtitle && translation && (
+            {showTranslationSubtitle && (
               <div className="min-h-[60px] bg-primary/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
-                  <span className="text-lg" role="img" aria-label={targetLanguage}>
-                    {getLanguageEmoji(targetLanguage)}
+                  <span className="text-lg" role="img" aria-label={LANGUAGES[translationLanguage]?.label}>
+                    {getLanguageEmoji(translationLanguage)}
                   </span>
                 </div>
                 <p className="text-center flex-1">
                   {isLoading ? (
                     <span className="animate-pulse">✨ Preparing translation...</span>
                   ) : (
-                    getCurrentSubtitle(translation.data)?.text || " "
+                    translation && getCurrentSubtitle(translation.data)?.text || " "
                   )}
                 </p>
               </div>
@@ -352,8 +343,8 @@ export function VideoPlayer({
               onScroll={handleScroll}
             >
               <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
-                <span className="text-lg" role="img" aria-label={targetLanguage}>
-                  {getLanguageEmoji(targetLanguage)}
+                <span className="text-lg" role="img" aria-label={translationLanguage}>
+                  {getLanguageEmoji(translationLanguage)}
                 </span>
                 <h3 className="font-semibold">Translation</h3>
                 {hasTranslationError ? (

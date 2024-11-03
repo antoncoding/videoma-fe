@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Settings2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 function LanguageCard({ 
   language, 
@@ -29,12 +30,14 @@ function LanguageCard({
   language: string;
   level: LevelValue;
   voiceId: string;
-  onUpdate: (code: string, level: LevelValue, voiceId: string) => void;
+  onUpdate: (code: string, level: LevelValue, voiceId: string, preferredLanguage?: string) => void;
   onRemove: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [localLevel, setLocalLevel] = useState(level);
   const [localVoiceId, setLocalVoiceId] = useState(voiceId);
+  const [localPreferredLanguage, setLocalPreferredLanguage] = useState<string | undefined>();
+  const { primaryLanguage } = useLanguageSettings();
   const { toast } = useToast();
 
   const langInfo = LANGUAGES[language];
@@ -42,11 +45,11 @@ function LanguageCard({
   const selectedVoice = voices.find(v => v.id === voiceId);
 
   const handleSave = () => {
-    onUpdate(language, localLevel, localVoiceId);
+    onUpdate(language, localLevel, localVoiceId, localPreferredLanguage);
     setIsOpen(false);
     toast({
       title: "✨ Class updated",
-      description: "Your class settings have been saved.",
+      description: `Now learning ${LANGUAGES[language].label} with ${localPreferredLanguage ? LANGUAGES[localPreferredLanguage].label : 'primary language'}`,
     });
   };
 
@@ -136,6 +139,42 @@ function LanguageCard({
                 ))}
               </div>
             </div>
+
+            {/* Learning Language Preference */}
+            <div className="space-y-4">
+              <h4 className="font-medium">Assisting Language</h4>
+              <p className="text-sm text-muted-foreground">
+                Choose which language you want to assist your learning of {LANGUAGES[language].label}.
+                By default, translations will be in your primary language ({LANGUAGES[primaryLanguage].label}).
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { code: "en", label: "English" },
+                  { code: "zh_tw", label: "Traditional Chinese" }
+                ].filter(lang => lang.code !== language).map((lang) => (
+                  <Card
+                    key={lang.code}
+                    className={cn(
+                      "p-4 cursor-pointer hover:border-primary transition-colors",
+                      localPreferredLanguage === lang.code && "border-primary bg-primary/5"
+                    )}
+                    onClick={() => setLocalPreferredLanguage(lang.code)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{LANGUAGES[lang.code].flag}</span>
+                      <div>
+                        <p className="font-medium">{lang.label}</p>
+                        {lang.code === primaryLanguage && (
+                          <Badge variant="secondary" className="mt-1">
+                            Primary Language
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-between">
@@ -149,7 +188,10 @@ function LanguageCard({
               <Button variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
+              <Button onClick={() => {
+                onUpdate(language, localLevel, localVoiceId, localPreferredLanguage);
+                setIsOpen(false);
+              }}>
                 Save Changes
               </Button>
             </div>
@@ -308,72 +350,117 @@ function AddClassDialog({ onAdd, existingLanguages }: AddClassDialogProps) {
 
 export default function SettingsPage() {
   const {
-    nativeLanguage,
+    primaryLanguage,
     targetLanguages,
-    setNativeLanguage,
+    setPrimaryLanguage,
     updateClass,
     removeClass,
     voices,
   } = useLanguageSettings();
   const { toast } = useToast();
 
-  const handleUpdateClass = (code: string, level: LevelValue, voiceId: string) => {
-    updateClass(code, level, voiceId);
+  const handleUpdateClass = (
+    code: string, 
+    level: LevelValue, 
+    voiceId: string, 
+    preferredLanguage?: string
+  ) => {
+    updateClass(code, level, voiceId, preferredLanguage);
+    toast({
+      title: "✨ Class updated",
+      description: preferredLanguage 
+        ? `Now learning ${LANGUAGES[code].label} with ${LANGUAGES[preferredLanguage].label}`
+        : `Updated ${LANGUAGES[code].label} class settings`,
+    });
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">My Classes</h1>
+          <h1 className="text-2xl font-bold">Language Settings</h1>
           <p className="text-muted-foreground">
-            Manage your language learning journey
+            Customize your learning experience
           </p>
         </div>
       </div>
 
       <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Native Language</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {Object.values(LANGUAGES)
-            .filter(lang => lang.available)
-            .map((lang) => (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">Primary Learning Language</h2>
+            <p className="text-sm text-muted-foreground">
+              This is the language you're most comfortable with. All translations will default 
+              to this language unless specified otherwise in individual class settings.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { code: "en", label: "English", description: "Global language for learning" },
+              { code: "zh_tw", label: "Traditional Chinese", description: "Traditional characters used in Taiwan and Hong Kong" }
+            ].map((lang) => (
               <Card
                 key={lang.code}
                 className={cn(
-                  "p-4 cursor-pointer hover:border-primary transition-colors",
-                  nativeLanguage === lang.code && "border-primary bg-primary/5"
+                  "p-6 cursor-pointer hover:border-primary transition-colors",
+                  primaryLanguage === lang.code && "border-primary bg-primary/5"
                 )}
-                onClick={() => setNativeLanguage(lang.code)}
+                onClick={() => {
+                  setPrimaryLanguage(lang.code);
+                  toast({
+                    title: "✨ Primary language updated",
+                    description: `${LANGUAGES[lang.code].label} is now your primary learning language.`,
+                  });
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{lang.flag}</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-4xl">{LANGUAGES[lang.code].flag}</span>
                   <div>
-                    <p className="font-medium">{lang.label}</p>
-                    <p className="text-sm text-muted-foreground">Native</p>
+                    <h3 className="font-semibold">{lang.label}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {lang.description}
+                    </p>
                   </div>
                 </div>
+                {primaryLanguage === lang.code && (
+                  <div className="mt-2">
+                    <Badge variant="secondary" className="text-sm">
+                      Currently your primary learning language
+                    </Badge>
+                  </div>
+                )}
               </Card>
             ))}
+          </div>
         </div>
       </Card>
 
-      <div className="grid gap-6">
-        {targetLanguages.map((lang) => (
-          <LanguageCard
-            key={lang.code}
-            language={lang.code}
-            level={lang.level}
-            voiceId={voices[lang.code]?.voiceId || ''}
-            onUpdate={handleUpdateClass}
-            onRemove={() => removeClass(lang.code)}
-          />
-        ))}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">My Language Classes</h2>
+          <p className="text-sm text-muted-foreground">
+            Languages you're currently learning. Each class can be customized with a teacher 
+            and an assisting language for translations.
+          </p>
+        </div>
 
-        <AddClassDialog 
-          onAdd={handleUpdateClass}
-          existingLanguages={targetLanguages.map(lang => lang.code)}
-        />
+        <div className="grid gap-6">
+          {targetLanguages.map((lang) => (
+            <LanguageCard
+              key={lang.code}
+              language={lang.code}
+              level={lang.level}
+              voiceId={voices[lang.code]?.voiceId || ''}
+              onUpdate={handleUpdateClass}
+              onRemove={() => removeClass(lang.code)}
+            />
+          ))}
+
+          <AddClassDialog 
+            onAdd={handleUpdateClass}
+            existingLanguages={targetLanguages.map(lang => lang.code)}
+          />
+        </div>
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "@/components/ui/use-toast";
 import { useAudioStore } from '@/store/audio';
 import { useLanguageSettings } from "@/hooks/useLanguageSettings";
+import { getLanguageEmoji } from "@/constants/languages";
 interface SavedSentence {
   id: number;
   video_url: string;
@@ -41,14 +42,6 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   // Try to find the video in our local store
   const videoId = sentence.video_url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/)?.[1];
   const storedVideo = videoId ? videos.find(v => v.id === videoId) : null;
-
-  const getLanguageEmoji = (lang: string) => {
-    switch (lang.toLowerCase()) {
-      case 'es': return '🇪🇸';
-      case 'en': return '🇬🇧';
-      default: return '🌐';
-    }
-  };
 
   const playAudio = async (text: string, language: string) => {
     if (isPlaying) {

@@ -1,49 +1,63 @@
 import { useLanguageStore } from '@/store/settings/language';
 import { useVoiceStore } from '@/store/settings/voice';
 import { LevelValue } from '@/constants/levels';
+import { VOICE_PROFILES } from '@/constants/voices';
 
 export function useLanguageSettings() {
   const {
-    nativeLanguage,
+    primaryLanguage,
     targetLanguages,
-    setNativeLanguage,
-    addTargetLanguage,
-    updateLanguageLevel,
-    removeTargetLanguage,
-    getCurrentLanguage,
+    setPrimaryLanguage,
+    updateClass: updateLanguageClass,
+    removeClass: removeLanguageClass,
+    getAssistingLanguage,
   } = useLanguageStore();
 
   const {
     voices,
     setVoice,
     removeVoice,
-    getVoiceForLanguage,
   } = useVoiceStore();
 
-  const updateClass = (code: string, level: LevelValue, voiceId: string) => {
-    addTargetLanguage(code, level);
+  // Single way to update a class
+  const updateClass = (
+    code: string,
+    level: LevelValue,
+    voiceId: string,
+    assistingLanguage?: string
+  ) => {
+    updateLanguageClass(code, level, assistingLanguage);
     setVoice(code, voiceId);
   };
 
+  // Single way to remove a class
   const removeClass = (code: string) => {
-    removeTargetLanguage(code);
+    removeLanguageClass(code);
     removeVoice(code);
   };
 
+  const getVoiceForLanguage = (code: string) => {
+    return voices[code]?.voiceId || VOICE_PROFILES[code][0].id
+  };
+
   return {
-    // Language settings
-    nativeLanguage,
+    // Settings
+    primaryLanguage,
     targetLanguages,
-    getCurrentLanguage,
-    setNativeLanguage,
-    updateLanguageLevel,
+    setPrimaryLanguage,
+    
+    // Class operations
+    updateClass,
+    removeClass,
+    classes,
+    
+    // Queries
+    getAssistingLanguage,
     
     // Voice settings
     voices,
+
+    // assistant functions
     getVoiceForLanguage,
-    
-    // Combined operations
-    updateClass,
-    removeClass,
   };
 } 

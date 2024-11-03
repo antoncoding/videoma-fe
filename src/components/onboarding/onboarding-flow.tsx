@@ -55,7 +55,7 @@ export function OnboardingFlow() {
                 <GraduationCap className="w-12 h-12 mx-auto text-primary" />
                 <h1 className="text-3xl font-bold">Welcome to Vidioma</h1>
                 <p className="text-muted-foreground">
-                  First, let's set your native language
+                  First, let's set your primary learning language
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">

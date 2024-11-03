@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { useVideosStore } from "@/store/videos";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
-import { Video, Languages } from "lucide-react";
+import { Video } from "lucide-react";
 import { FaYoutube } from "react-icons/fa";
 import { LANGUAGES } from "@/constants/languages";
-import { useSettingsStore } from "@/store/settings";
+import { useLanguageSettings } from "@/hooks/useLanguageSettings";
+import { Badge } from "@/components/ui/badge";
 
 interface VideoSearchProps {
   language: string;
@@ -23,7 +24,14 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const addVideo = useVideosStore((state) => state.addVideo);
-  const { settings } = useSettingsStore();
+
+  
+  const { primaryLanguage, getAssistingLanguage } = useLanguageSettings();
+
+  console.log(language, getAssistingLanguage(language), primaryLanguage);
+
+  const learningLanguage = getAssistingLanguage(language);
+  const isUsingPrimary = learningLanguage === primaryLanguage;
 
   const getYouTubeVideoId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/);
@@ -43,12 +51,11 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
     setLoading(true);
 
     try {
-      // Add video with default title (we'll let user edit it in the video page)
       addVideo({
         id: videoId,
         customTitle: 'New Video',
         url: videoUrl,
-        language: LANGUAGES[language].code,
+        language: language,
       });
 
       router.push(`/videos/${videoId}`);
@@ -79,7 +86,7 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
         )}
 
         <form onSubmit={handleSubmit} className="flex items-center gap-4">
-          <div className="flex-1 flex items-center gap-2 bg-muted rounded-md px-3 gap-2">
+          <div className="flex-1 flex items-center gap-2 bg-muted rounded-md px-3">
             <FaYoutube className="w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
@@ -95,13 +102,25 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
           </Button>
         </form>
 
-        <div className="text-sm text-muted-foreground">
-          <p>
+        <div className="flex flex-col gap-1">
+          <p className="text-sm text-muted-foreground">
             Learning {LANGUAGES[language].label} at{" "}
             <span className="font-medium">
               {level.charAt(0).toUpperCase() + level.slice(1)}
             </span> level
           </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{LANGUAGES[language].flag}</span>
+            <span>→</span>
+            <span>{LANGUAGES[learningLanguage].flag}</span>
+            <Badge variant="secondary" className="text-xs">
+              {isUsingPrimary ? (
+                "Using primary language"
+              ) : (
+                `Learning with ${LANGUAGES[learningLanguage].label}`
+              )}
+            </Badge>
+          </div>
         </div>
       </div>
     </Card>

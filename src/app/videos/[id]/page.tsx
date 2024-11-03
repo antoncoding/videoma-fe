@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil } from "lucide-react";
 import Link from "next/link";
+import { useLanguageSettings } from '@/hooks/useLanguageSettings';
+import { LANGUAGES } from '@/constants/languages';
 
 interface TranscriptResponse {
   status: string;
@@ -27,6 +29,7 @@ export default function VideoPage() {
   const searchParams = useSearchParams();
   const startTime = searchParams.get('t'); // Get timestamp from URL
   const { videos, updateVideoTitle } = useVideosStore();
+  const { getAssistingLanguage } = useLanguageSettings();
   const video = videos.find((v) => v.id === params.id);
   
   const [transcriptData, setTranscriptData] = useState<TranscriptResponse | null>(null);
@@ -48,6 +51,8 @@ export default function VideoPage() {
 
     const fetchTranscript = async () => {
       try {
+        const assistingLanguage = getAssistingLanguage(video.language);
+
         const response = await fetch("http://localhost:5000/api/process", {
           method: "POST",
           headers: {
@@ -56,7 +61,7 @@ export default function VideoPage() {
           body: JSON.stringify({
             video_url: video.url,
             audio_language: video.language,
-            target_language: 'en', // native language if no target language is specified
+            target_language: assistingLanguage,
           }),
         });
 
@@ -162,11 +167,19 @@ export default function VideoPage() {
             <div className="h-10 bg-muted rounded w-full" />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{LANGUAGES[video.language].flag}</span>
+                  <div className="h-4 bg-muted rounded w-24" />
+                </div>
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="h-16 bg-muted rounded" />
                 ))}
               </div>
               <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{LANGUAGES[getAssistingLanguage(video.language)].flag}</span>
+                  <div className="h-4 bg-muted rounded w-24" />
+                </div>
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="h-16 bg-muted rounded" />
                 ))}

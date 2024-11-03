@@ -5,50 +5,48 @@ import { LevelValue } from '@/constants/levels';
 interface TargetLanguage {
   code: string;
   level: LevelValue;
+  assistingLanguage?: string;
 }
 
 interface LanguageState {
-  nativeLanguage: string;
+  primaryLanguage: string;
   targetLanguages: TargetLanguage[];
 }
 
 interface LanguageStore extends LanguageState {
-  setNativeLanguage: (code: string) => void;
-  addTargetLanguage: (code: string, level: LevelValue) => void;
-  updateLanguageLevel: (code: string, level: LevelValue) => void;
-  removeTargetLanguage: (code: string) => void;
-  getCurrentLanguage: () => TargetLanguage | undefined;
+  setPrimaryLanguage: (code: string) => void;
+  updateClass: (code: string, level: LevelValue, assistingLanguage?: string) => void;
+  removeClass: (code: string) => void;
+  getAssistingLanguage: (code: string) => string;
 }
 
 export const useLanguageStore = create<LanguageStore>()(
   persist(
     (set, get) => ({
-      nativeLanguage: "en",
+      primaryLanguage: "en",
       targetLanguages: [],
       
-      setNativeLanguage: (code) => set({ nativeLanguage: code }),
+      setPrimaryLanguage: (code) => 
+        set({ primaryLanguage: code }),
       
-      addTargetLanguage: (code, level) => 
+      updateClass: (code, level, assistingLanguage) => 
         set((state) => ({
           targetLanguages: [
-            { code, level },
+            { code, level, assistingLanguage },
             ...state.targetLanguages.filter(lang => lang.code !== code)
           ],
         })),
       
-      updateLanguageLevel: (code, level) =>
-        set((state) => ({
-          targetLanguages: state.targetLanguages.map(lang =>
-            lang.code === code ? { ...lang, level } : lang
-          ),
-        })),
-      
-      removeTargetLanguage: (code) =>
+      removeClass: (code) =>
         set((state) => ({
           targetLanguages: state.targetLanguages.filter(lang => lang.code !== code),
         })),
 
-      getCurrentLanguage: () => get().targetLanguages[0],
+      getAssistingLanguage: (code) => {
+        const state = get();
+        const targetLang = state.targetLanguages.find(lang => lang.code === code);
+        return targetLang?.assistingLanguage || state.primaryLanguage;
+      },
     }),
     {
       name: 'language-settings',
