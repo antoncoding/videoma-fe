@@ -37,7 +37,6 @@ export interface LearningSession {
   title: string;
   introduction: {
     message: string;
-    aiTutorName: string;
   };
   vocabulary: VocabularyWord[];
   sentences: SentenceAnalysis[];

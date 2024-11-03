@@ -296,10 +296,10 @@ export function VideoPlayer({
   };
 
   return (
-    <div className="relative space-y-4">
+    <div className="relative space-y-4 w-full max-w-[1000px] mx-auto">
       {/* Video player section */}
-      <div className="relative">
-        <div className="aspect-video">
+      <div className="relative w-full">
+        <div className="aspect-video w-full">
           <ReactPlayer
             ref={playerRef}
             url={videoUrl}
@@ -383,7 +383,7 @@ export function VideoPlayer({
       </div>
 
       {/* Controls and transcripts */}
-      <div>
+      <div className="w-full">
         <div className="flex items-center justify-between gap-6 mb-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">

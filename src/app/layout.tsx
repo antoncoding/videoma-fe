@@ -25,8 +25,8 @@ export default function RootLayout({
           <SidebarProvider>
             <div className="flex min-h-screen">
               <Sidebar />
-              <div className="flex-1 ml-64">
-                <div className="max-w-[1600px] mx-auto px-8">
+              <div className="flex-1 ml-64 mr-80">
+                <div className="max-w-[1200px] mx-auto px-8">
                   <main className="py-8">{children}</main>
                 </div>
               </div>

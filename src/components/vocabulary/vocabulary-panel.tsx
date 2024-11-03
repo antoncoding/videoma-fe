@@ -8,9 +8,10 @@ import { Trash2, Book } from 'lucide-react';
 interface VocabularyPanelProps {
   videoId: string;
   onGenerateSession: () => void;
+  isGenerating: boolean;
 }
 
-export function VocabularyPanel({ videoId, onGenerateSession }: VocabularyPanelProps) {
+export function VocabularyPanel({ videoId, onGenerateSession, isGenerating }: VocabularyPanelProps) {
   const { getHighlightsForVideo, removeHighlight } = useHighlightsStore();
   const highlights = getHighlightsForVideo(videoId);
 
@@ -22,9 +23,22 @@ export function VocabularyPanel({ videoId, onGenerateSession }: VocabularyPanelP
       <div className="flex items-center justify-between p-4">
         <h3 className="font-semibold">Vocabulary List</h3>
         {highlights.length > 0 && (
-          <Button size="sm" onClick={onGenerateSession}>
-            <Book className="w-4 h-4 mr-2" />
-            Generate Lesson
+          <Button 
+            size="sm" 
+            onClick={onGenerateSession}
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <>
+                <span className="animate-spin mr-2">⏳</span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <Book className="w-4 h-4 mr-2" />
+                Generate Lesson
+              </>
+            )}
           </Button>
         )}
       </div>
