@@ -51,6 +51,10 @@ export function useLanguageSettings() {
     return enrolledClasses.find(cls => cls.languageCode === languageCode);
   };
 
+  const getVoiceSettings = (languageCode: string) => {
+    return voices[languageCode];
+  };
+
   return {
     // Settings
     primaryLanguage,
@@ -69,5 +73,6 @@ export function useLanguageSettings() {
     
     // Voice settings
     voices,
+    getVoiceSettings,
   };
 } 

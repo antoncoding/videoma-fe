@@ -9,6 +9,7 @@ interface GenerateSessionParams {
     transcript: string;
   };
   userLevel: string;
+  tone: string;
 }
 
 export async function generateLearningSession(

@@ -7,11 +7,12 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { toast } from "@/components/ui/use-toast";
 import { useAudioStore } from '@/store/audio';
-import { useLanguageSettings } from "@/hooks/useLanguageSettings";
 import { getLanguageEmoji } from "@/constants/languages";
 import { useVoiceStore } from "@/store/settings/voice";
+import { useAudioPlayback } from "@/hooks/useAudioPlayback";
+import { toast } from "@/hooks/use-toast";
+
 interface SavedSentence {
   id: number;
   video_url: string;
@@ -40,142 +41,22 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   const { getVoiceForLanguage } = useVoiceStore();
   const { getFromCache, addToCache } = useAudioStore();
 
+  const { playAudio } = useAudioPlayback();
+
   // Try to find the video in our local store
   const videoId = sentence.video_url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/)?.[1];
   const storedVideo = videoId ? videos.find(v => v.id === videoId) : null;
 
-  const playAudio = async (text: string, language: string) => {
+  const playAudioWithLoading = async (text: string, language: string) => {
     if (isPlaying) {
-      console.log('Stopping current audio');
-      audioRef.current?.pause();
       setIsPlaying(false);
       return;
     }
 
     setAudioLoading(true);
     try {
-      const voice = getVoiceForLanguage(language);
-      console.log('Using voice:', voice );
-
-      // Check cache first
-      let audioId = getFromCache(sentence.id);
-      
-      if (!audioId) {
-        // Generate new audio if not in cache
-        const generateResponse = await fetch("http://localhost:5000/api/audio/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.accessToken}`,
-          },
-          body: JSON.stringify({
-            sentence: text,
-            sentence_id: sentence.id,
-            voice_id: voice,
-          }),
-        });
-
-        if (!generateResponse.ok) {
-          const errorData = await generateResponse.json();
-          throw new Error(errorData.message || 'Failed to generate audio');
-        }
-
-        const { audio_id } = await generateResponse.json();
-        console.log('Generated new audio ID:', audio_id);
-        
-        // Save to cache
-        addToCache(sentence.id, audio_id);
-        audioId = audio_id;
-      } else {
-        console.log('Using cached audio ID:', audioId);
-      }
-
-      // Fetch the audio file using the ID (either from cache or newly generated)
-      const audioResponse = await fetch(`http://localhost:5000/api/audio/${audioId}`, {
-        headers: {
-          "Authorization": `Bearer ${session?.accessToken}`,
-        },
-      });
-
-      if (!audioResponse.ok) {
-        if (audioResponse.status === 404) {
-          // If audio not found, remove from cache and try generating again
-          console.log('Cached audio not found, regenerating...');
-          addToCache(sentence.id, 0); // Clear cache
-          throw new Error('Cached audio not found');
-        }
-        const errorData = await audioResponse.json();
-        throw new Error(errorData.message || 'Failed to fetch audio');
-      }
-
-      // Get the audio blob from the response
-      const audioBlob = await audioResponse.blob();
-      console.log('Received audio blob:', {
-        size: audioBlob.size,
-        type: audioBlob.type
-      });
-
-      const url = URL.createObjectURL(audioBlob);
-      console.log('Created URL:', url);
-
-      if (audioRef.current) {
-        // Clean up previous URL if it exists
-        if (audioRef.current.src) {
-          URL.revokeObjectURL(audioRef.current.src);
-        }
-
-        audioRef.current.src = url;
-        
-        audioRef.current.onloadeddata = () => {
-          console.log('Audio loaded, starting playback');
-          audioRef.current?.play()
-            .then(() => {
-              console.log('Playback started');
-              setIsPlaying(true);
-            })
-            .catch(error => {
-              console.error('Playback failed:', error);
-              setIsPlaying(false);
-              toast({
-                variant: "destructive",
-                title: "❌ Error",
-                description: "Failed to play audio",
-              });
-            });
-        };
-        
-        audioRef.current.onerror = (e) => {
-          console.error('Audio loading error:', e);
-          setIsPlaying(false);
-          setAudioLoading(false);
-          toast({
-            variant: "destructive",
-            title: "❌ Error",
-            description: "Failed to load audio",
-          });
-        };
-
-        audioRef.current.onended = () => {
-          console.log('Audio playback completed');
-          setIsPlaying(false);
-          URL.revokeObjectURL(url);
-        };
-
-        audioRef.current.onpause = () => {
-          console.log('Audio paused');
-          setIsPlaying(false);
-        };
-      }
+      await playAudio(text, language, sentence.id);
     } catch (error) {
-      console.error('Detailed error:', error);
-      
-      // If error was due to missing cached audio, retry once
-      if (error instanceof Error && error.message === 'Cached audio not found') {
-        console.log('Retrying audio generation...');
-        playAudio(text, language);
-        return;
-      }
-
       toast({
         variant: "destructive",
         title: "❌ Error",
@@ -230,7 +111,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
               variant="ghost"
               size="sm"
               className="ml-auto"
-              onClick={() => playAudio(sentence.original_text, sentence.original_language)}
+              onClick={() => playAudioWithLoading(sentence.original_text, sentence.original_language)}
               disabled={audioLoading || !session}
             >
               {audioLoading ? (

@@ -18,6 +18,9 @@ import { toast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
 import { useVideoTranscript } from '@/hooks/useVideoTranscript';
 import { useSidebar } from "@/contexts/sidebar-context";
+import { VOICE_PROFILES } from '@/constants/voices';
+import { LearningView } from "@/components/learning/learning-view";
+import { TutorMessage } from "@/components/learning/tutor-message";
 
 type LearningStep = 'selecting' | 'learning' | 'completed';
 
@@ -46,8 +49,15 @@ export default function VideoPage() {
     getClassSettings(video?.language || 'es')?.assistingLanguage || 'en'
   );
 
+  const { getVoiceSettings } = useLanguageSettings();
+
   const handleGenerateLesson = async () => {
     if (!video || !transcriptData || !userSession?.accessToken) return;
+    
+    const voiceSettings = getVoiceSettings(video.language);
+    const voiceProfile = VOICE_PROFILES[video.language]?.find(
+      v => v.id === voiceSettings?.voiceId
+    );
     
     setIsGenerating(true);
     try {
@@ -60,6 +70,7 @@ export default function VideoPage() {
           transcript: transcriptData.transcription.data.map((s: any) => s.text).join(' '),
         },
         userLevel: getClassSettings(video.language)?.level || 'intermediate',
+        tone: voiceProfile?.personality || 'A friendly and helpful teacher',
       }, userSession.accessToken);
       setLearningSession(response.generation.data);
       setLearningStep('learning');
@@ -114,8 +125,9 @@ export default function VideoPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-4"
+              className="space-y-4 mx-16 mt-8"
             >
+              <TutorMessage language={video.language} />
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">
                   Select Words & Sentences
@@ -139,28 +151,12 @@ export default function VideoPage() {
               />
             </motion.div>
           ) : learningStep === 'learning' && learningSession ? (
-            <motion.div
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -100 }}
-              className="space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  Learning Session
-                </h2>
-                <Button
-                  variant="outline"
-                  onClick={() => setLearningStep('selecting')}
-                >
-                  Back to Video
-                </Button>
-              </div>
-              <LearningSession 
-                session={learningSession}
-                onClose={() => setLearningStep('selecting')}
-              />
-            </motion.div>
+            <LearningView
+              session={learningSession}
+              videoId={video.id}
+              onBack={() => setLearningStep('selecting')}
+              language={video.language}
+            />
           ) : null}
         </AnimatePresence>
       </div>
