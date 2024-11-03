@@ -17,7 +17,7 @@ export function RightSidebar() {
     >
       <div className="h-full flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold">Details</h2>
+          <h2 className="font-semibold">Customize your learning</h2>
           <Button variant="ghost" size="icon" onClick={hideRightSidebar}>
             <X className="h-4 w-4" />
           </Button>

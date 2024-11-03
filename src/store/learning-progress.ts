@@ -1,23 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { LearningSession } from '@/types/vocabulary';
 
-export type ProgressItem = {
-  completed: boolean;
-  timestamp: number;
-};
-
-type LearningProgress = {
-  vocabulary: Record<string, ProgressItem>;  // word -> progress
-  sentences: Record<string, ProgressItem>;   // sentence -> progress
-  exercises: Record<string, ProgressItem>;   // exercise -> progress
+type SessionProgress = {
+  completedItems: string[];  // Array of completed item IDs
   overallProgress: number;
+  lastUpdated: number;
 };
 
 type LearningProgressStore = {
-  progress: Record<string, LearningProgress>;  // sessionId -> progress
-  updateProgress: (sessionId: string, type: keyof LearningProgress, itemId: string, completed: boolean) => void;
-  getProgress: (sessionId: string) => LearningProgress;
-  calculateOverallProgress: (sessionId: string) => number;
+  progress: Record<string, SessionProgress>;  // sessionId -> progress
+  initializeProgress: (sessionId: string, session: LearningSession) => void;
+  toggleItemCompletion: (sessionId: string, itemId: string) => void;
+  isItemCompleted: (sessionId: string, itemId: string) => boolean;
+  getProgress: (sessionId: string) => SessionProgress;
+  calculateOverallProgress: (sessionId: string, totalItems: number) => number;
 };
 
 export const useLearningProgress = create<LearningProgressStore>()(
@@ -25,78 +22,79 @@ export const useLearningProgress = create<LearningProgressStore>()(
     (set, get) => ({
       progress: {},
 
-      updateProgress: (sessionId, type, itemId, completed) => {
-        set((state) => {
-          const sessionProgress = state.progress[sessionId] || {
-            vocabulary: {},
-            sentences: {},
-            exercises: {},
-            overallProgress: 0,
-          };
+      initializeProgress: (sessionId, session) => {
+        // Generate IDs for all items
+        const allItemIds = [
+          ...session.vocabulary.map((_, idx) => `word-${idx}`),
+          ...session.sentences.map((_, idx) => `sentence-${idx}`),
+          ...session.exercises.map((_, idx) => `exercise-${idx}`),
+        ];
 
-          const updatedProgress = {
-            ...sessionProgress,
-            [type]: {
-              ...sessionProgress[type] as any,
-              [itemId]: {
-                completed,
-                timestamp: Date.now(),
-              },
+        set((state) => ({
+          progress: {
+            ...state.progress,
+            [sessionId]: {
+              completedItems: [],
+              overallProgress: 0,
+              lastUpdated: Date.now(),
             },
+          },
+        }));
+
+        return allItemIds;
+      },
+
+      toggleItemCompletion: (sessionId, itemId) => {
+        set((state) => {
+
+          console.log('toggleItemCompletion', sessionId, itemId);
+
+          const sessionProgress = state.progress[sessionId] || {
+            completedItems: [],
+            overallProgress: 0,
+            lastUpdated: Date.now(),
           };
 
-          // Calculate new overall progress
-          const totalItems = 
-            Object.keys(updatedProgress.vocabulary).length +
-            Object.keys(updatedProgress.sentences).length +
-            Object.keys(updatedProgress.exercises).length;
-
-          const completedItems = 
-            Object.values(updatedProgress.vocabulary).filter(i => i.completed).length +
-            Object.values(updatedProgress.sentences).filter(i => i.completed).length +
-            Object.values(updatedProgress.exercises).filter(i => i.completed).length;
-
-          updatedProgress.overallProgress = totalItems > 0 
-            ? (completedItems / totalItems) * 100 
-            : 0;
+          const newCompletedItems = sessionProgress.completedItems.includes(itemId)
+            ? sessionProgress.completedItems.filter(id => id !== itemId)
+            : [...sessionProgress.completedItems, itemId];
 
           return {
             progress: {
               ...state.progress,
-              [sessionId]: updatedProgress,
+              [sessionId]: {
+                ...sessionProgress,
+                completedItems: newCompletedItems,
+                lastUpdated: Date.now(),
+              },
             },
           };
         });
       },
 
+      isItemCompleted: (sessionId, itemId) => {
+        const sessionProgress = get().progress[sessionId];
+        return sessionProgress?.completedItems.includes(itemId) || false;
+      },
+
       getProgress: (sessionId) => {
         return get().progress[sessionId] || {
-          vocabulary: {},
-          sentences: {},
-          exercises: {},
+          completedItems: [],
           overallProgress: 0,
+          lastUpdated: Date.now(),
         };
       },
 
-      calculateOverallProgress: (sessionId) => {
-        const progress = get().progress[sessionId];
-        if (!progress) return 0;
+      calculateOverallProgress: (sessionId, totalItems) => {
+        const sessionProgress = get().progress[sessionId];
+        if (!sessionProgress || sessionProgress.completedItems === undefined) return 0;
 
-        const totalItems = 
-          Object.keys(progress.vocabulary).length +
-          Object.keys(progress.sentences).length +
-          Object.keys(progress.exercises).length;
-
-        const completedItems = 
-          Object.values(progress.vocabulary).filter(i => i.completed).length +
-          Object.values(progress.sentences).filter(i => i.completed).length +
-          Object.values(progress.exercises).filter(i => i.completed).length;
-
-        return totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+        const completedCount = sessionProgress.completedItems.length;
+        return totalItems > 0 ? (completedCount / totalItems) * 100 : 0;
       },
     }),
     {
       name: 'learning-progress',
     }
   )
-); 
+);

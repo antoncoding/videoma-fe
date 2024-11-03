@@ -11,19 +11,22 @@ import { Badge } from '@/components/ui/badge';
 
 type Exercise = LearningSession['exercises'][0];
 import { ExerciseType } from '@/types/vocabulary';
+import { useLearningProgress } from '@/store/learning-progress';
 
 interface ExercisesProps {
   exercises: Exercise[];
   onComplete: (score: number) => void;
   language: string;
+  sessionId: string;
 }
 
-export function Exercises({ exercises, onComplete, language }: ExercisesProps) {
+export function Exercises({ exercises, onComplete, language, sessionId }: ExercisesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [userInput, setUserInput] = useState('');
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
+  const { isItemCompleted, toggleItemCompletion } = useLearningProgress();
 
   const exercise = exercises[currentIndex];
   const isLastExercise = currentIndex === exercises.length - 1;
@@ -41,8 +44,10 @@ export function Exercises({ exercises, onComplete, language }: ExercisesProps) {
 
   const handleNext = () => {
     if (isLastExercise) {
+      toggleItemCompletion(sessionId, `exercise-${currentIndex}`);
       onComplete(score);
     } else {
+      toggleItemCompletion(sessionId, `exercise-${currentIndex}`);
       setCurrentIndex(prev => prev + 1);
       setSelectedAnswer(null);
       setUserInput('');
@@ -230,8 +235,13 @@ export function Exercises({ exercises, onComplete, language }: ExercisesProps) {
     }
   };
 
+  const isCurrentExerciseCompleted = isItemCompleted(sessionId, `exercise-${currentIndex}`);
+
   return (
-    <Card className="p-6">
+    <Card className={cn(
+      "p-6",
+      isCurrentExerciseCompleted && "border-green-500/20 bg-green-50/50"
+    )}>
       <audio ref={audioRef} hidden />
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -248,7 +258,12 @@ export function Exercises({ exercises, onComplete, language }: ExercisesProps) {
               Score: {score}/{exercises.length}
             </Badge>
             {selectedAnswer && (
-              <Button onClick={handleNext}>
+              <Button 
+                onClick={handleNext}
+                className={cn(
+                  isCurrentExerciseCompleted && "text-green-500"
+                )}
+              >
                 {isLastExercise ? 'Complete' : 'Next'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

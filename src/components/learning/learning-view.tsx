@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { useLearningProgress } from "@/store/learning-progress";
 import { Button } from "@/components/ui/button";
 import { TutorMessage } from "./tutor-message";
+import { useEffect, useState } from "react";
 
 interface LearningViewProps {
   session: LearningSessionType;
@@ -17,39 +18,64 @@ interface LearningViewProps {
 }
 
 export function LearningView({ session, videoId, onBack, language }: LearningViewProps) {
-  const { getProgress, updateProgress } = useLearningProgress();
-  const sessionProgress = getProgress(session.id);
+  const { toggleItemCompletion, initializeProgress, getProgress } = useLearningProgress();
 
-  const handleVocabularyProgress = (wordId: string, completed: boolean) => {
-    updateProgress(session.id, 'vocabulary', wordId, completed);
+  // Initialize progress when session is loaded
+  useEffect(() => {
+    if (session) {
+      initializeProgress(session.id, session);
+    }
+  }, [session]);
+
+  // Get total items count
+  const totalItems = 
+    session.vocabulary.length + 
+    session.sentences.length + 
+    session.exercises.length;
+
+  // Get current progress directly from store
+  const currentProgress = getProgress(session.id);
+  const overallProgress = (currentProgress.completedItems.length / totalItems) * 100;
+
+  const handleVocabularyProgress = (index: number) => {
+    toggleItemCompletion(session.id, `word-${index}`);
   };
 
-  const handleSentenceProgress = (sentenceId: string, completed: boolean) => {
-    updateProgress(session.id, 'sentences', sentenceId, completed);
+  const handleSentenceProgress = (index: number) => {
+    toggleItemCompletion(session.id, `sentence-${index}`);
   };
 
   const handleExerciseComplete = (score: number) => {
     session.exercises.forEach((_, index) => {
-      updateProgress(session.id, 'exercises', `exercise-${index}`, true);
+      toggleItemCompletion(session.id, `exercise-${index}`);
     });
   };
 
-  const handleComplete = () => {
-    const shouldComplete = !isFullyCompleted; // Toggle completion state
+  const handleCompleteAll = () => {
+    // Mark all items as completed or uncompleted based on current state
+    const shouldComplete = overallProgress < 100;
     
-    // Mark everything as completed or uncompleted
-    session.vocabulary.forEach(word => {
-      updateProgress(session.id, 'vocabulary', word.word, shouldComplete);
+    session.vocabulary.forEach((_, index) => {
+      const itemId = `word-${index}`;
+      if (shouldComplete !== currentProgress.completedItems.includes(itemId)) {
+        toggleItemCompletion(session.id, itemId);
+      }
     });
-    session.sentences.forEach(sentence => {
-      updateProgress(session.id, 'sentences', sentence.original, shouldComplete);
+
+    session.sentences.forEach((_, index) => {
+      const itemId = `sentence-${index}`;
+      if (shouldComplete !== currentProgress.completedItems.includes(itemId)) {
+        toggleItemCompletion(session.id, itemId);
+      }
     });
+
     session.exercises.forEach((_, index) => {
-      updateProgress(session.id, 'exercises', `exercise-${index}`, shouldComplete);
+      const itemId = `exercise-${index}`;
+      if (shouldComplete !== currentProgress.completedItems.includes(itemId)) {
+        toggleItemCompletion(session.id, itemId);
+      }
     });
   };
-
-  const isFullyCompleted = sessionProgress.overallProgress === 100;
 
   return (
     <motion.div
@@ -78,11 +104,11 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
 
       <LearningTabs 
         videoId={videoId}
-        progress={sessionProgress.overallProgress}
-        onComplete={handleComplete}
+        progress={overallProgress}
+        onComplete={handleCompleteAll}
         onBookmark={() => {/* Handle bookmark */}}
         isBookmarked={false}
-        isCompleted={isFullyCompleted}
+        isCompleted={overallProgress === 100}
       >
         <TabPanel value="summary">
           <LearningSession 
@@ -95,8 +121,8 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
           <VocabularyList 
             words={session.vocabulary}
             language={language}
-            completedItems={sessionProgress.vocabulary}
             onToggleComplete={handleVocabularyProgress}
+            sessionId={session.id}
           />
         </TabPanel>
 
@@ -105,8 +131,8 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
             <SentencesList 
               sentences={session.sentences}
               language={language}
-              completedItems={sessionProgress.sentences}
               onToggleComplete={handleSentenceProgress}
+              sessionId={session.id}
             />
           </div>
         </TabPanel>
@@ -120,6 +146,7 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
               exercises={session.exercises}
               language={language}
               onComplete={handleExerciseComplete}
+              sessionId={session.id}
             />
           </div>
         </TabPanel>

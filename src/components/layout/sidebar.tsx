@@ -15,13 +15,15 @@ import {
   Trash2,
   LogOut,
   User,
-  Settings
+  Settings,
+  Pencil
 } from "lucide-react";
 import { useState } from "react";
 import { useVideosStore } from '@/store/videos';
 import { useSession, signOut, signIn } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 
 interface NavItem {
   title: string;
@@ -53,8 +55,10 @@ export function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const { videos, removeVideo } = useVideosStore();
+  const { videos, removeVideo, updateVideo } = useVideosStore();
   const { data: session, status } = useSession();
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const toggleExpand = (title: string) => {
     setExpandedItems(prev => 
@@ -62,6 +66,29 @@ export function Sidebar() {
         ? prev.filter(item => item !== title)
         : [...prev, title]
     );
+  };
+
+  const handleStartEdit = (videoId: string, currentTitle: string) => {
+    setEditingVideoId(videoId);
+    setEditingTitle(currentTitle);
+  };
+
+  const handleSaveEdit = (videoId: string) => {
+    if (editingTitle.trim()) {
+      updateVideo(videoId, { customTitle: editingTitle.trim() });
+    }
+    setEditingVideoId(null);
+    setEditingTitle("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, videoId: string) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit(videoId);
+    } else if (e.key === 'Escape') {
+      setEditingVideoId(null);
+      setEditingTitle("");
+    }
+    e.stopPropagation();
   };
 
   return (
@@ -135,24 +162,53 @@ export function Sidebar() {
                         key={video.id}
                         className="group flex items-center gap-2"
                       >
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start pl-6"
-                          asChild
-                        >
-                          <Link href={`/videos/${video.id}`}>
-                            <span className="truncate">{video.customTitle}</span>
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                          onClick={() => removeVideo(video.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {editingVideoId === video.id ? (
+                          <div className="flex-1 flex items-center gap-2 pl-6">
+                            <Input
+                              value={editingTitle}
+                              onChange={(e) => setEditingTitle(e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(e, video.id)}
+                              onBlur={() => handleSaveEdit(video.id)}
+                              autoFocus
+                              className="h-8"
+                            />
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start pl-6"
+                            asChild
+                          >
+                            <Link href={`/videos/${video.id}`}>
+                              <span className="truncate">{video.customTitle}</span>
+                            </Link>
+                          </Button>
+                        )}
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEdit(video.id, video.customTitle);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeVideo(video.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

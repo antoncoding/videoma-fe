@@ -20,7 +20,6 @@ export function VocabularyPanel({ videoId, onGenerateSession, isGenerating }: Vo
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4">
-        <h3 className="font-inter">Vocabulary List</h3>
         {highlights.length > 0 && (
           <Button 
             size="sm" 

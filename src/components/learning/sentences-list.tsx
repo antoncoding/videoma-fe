@@ -7,22 +7,24 @@ import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLearningProgress } from "@/store/learning-progress";
 
 interface SentencesListProps {
   sentences: SentenceAnalysis[];
   language: string;
-  completedItems: Record<string, { completed: boolean }>;
-  onToggleComplete: (sentenceId: string, completed: boolean) => void;
+  onToggleComplete: (index: number) => void;
+  sessionId: string;
 }
 
 export function SentencesList({ 
   sentences, 
   language,
-  completedItems,
-  onToggleComplete 
+  onToggleComplete,
+  sessionId,
 }: SentencesListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedSentences, setExpandedSentences] = useState<Set<string>>(new Set());
+  const { isItemCompleted } = useLearningProgress();
 
   const toggleExpanded = (sentenceId: string) => {
     const newExpanded = new Set(expandedSentences);
@@ -34,15 +36,15 @@ export function SentencesList({
     setExpandedSentences(newExpanded);
   };
 
-  const handleToggleComplete = (sentenceId: string, completed: boolean) => {
-    onToggleComplete(sentenceId, completed);
+  const handleToggleComplete = (idx: number, completed: boolean) => {
+    onToggleComplete(idx);
     // Automatically expand when unchecking, collapse when checking
     if (!completed) {
-      setExpandedSentences(prev => new Set(prev).add(sentenceId));
+      setExpandedSentences(prev => new Set(prev).add(`sentence-${idx}`));
     } else {
       setExpandedSentences(prev => {
         const newSet = new Set(prev);
-        newSet.delete(sentenceId);
+        newSet.delete(`sentence-${idx}`);
         return newSet;
       });
     }
@@ -51,14 +53,15 @@ export function SentencesList({
   return (
     <div className="space-y-4">
       <audio ref={audioRef} hidden />
-      {sentences.map((sentence) => {
-        const isCompleted = completedItems[sentence.original]?.completed || false;
-        const mainSentenceId = `sentence-${sentence.original}`.hashCode();
-        const isExpanded = expandedSentences.has(sentence.original);
+      {sentences.map((sentence, index) => {
+        const itemId = `sentence-${index}`;
+        const isCompleted = isItemCompleted(sessionId, itemId);
+        const mainSentenceId = itemId.hashCode();
+        const isExpanded = expandedSentences.has(itemId);
         
         return (
           <motion.div
-            key={sentence.original}
+            key={index}
             layout
             transition={{ duration: 0.2 }}
           >
@@ -68,7 +71,7 @@ export function SentencesList({
                 isCompleted && "border-green-500/20 bg-green-50/50",
                 "cursor-pointer"
               )}
-              onClick={() => toggleExpanded(sentence.original)}
+              onClick={() => toggleExpanded(itemId)}
             >
               <div className="space-y-4">
                 {/* Main sentence section */}
@@ -98,7 +101,7 @@ export function SentencesList({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleToggleComplete(sentence.original, !isCompleted);
+                      handleToggleComplete(index, !isCompleted);
                     }}
                   >
                     <CheckCircle className={cn(

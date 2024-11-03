@@ -1,43 +1,35 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export interface Video {
-  id: string;         // YouTube video ID
-  customTitle: string; // User-given title
-  url: string;        // Full URL
-  language: string;   // Original language
-  addedAt: Date;
-}
+export type Video = {
+  id: string;
+  url: string;
+  customTitle: string;
+  language: string;
+};
 
-interface VideosState {
+export type VideosState = {
   videos: Video[];
-  addVideo: (video: Omit<Video, 'addedAt'>) => void;
-  updateVideoTitle: (id: string, newTitle: string) => void;
+  addVideo: (video: Video) => void;
   removeVideo: (id: string) => void;
-}
+  updateVideo: (id: string, updates: Partial<Video>) => void;
+};
 
 export const useVideosStore = create<VideosState>()(
   persist(
     (set) => ({
       videos: [],
-      addVideo: (video) => 
-        set((state) => ({
-          // only add video if it doesn't already exist
-          videos: state.videos.find((v) => v.id === video.id) ? state.videos : [
-            { ...video, addedAt: new Date() },
-            ...state.videos,
-          ],
-        })),
-      updateVideoTitle: (id, newTitle) =>
-        set((state) => ({
-          videos: state.videos.map((video) =>
-            video.id === id ? { ...video, customTitle: newTitle } : video
-          ),
-        })),
-      removeVideo: (id) =>
-        set((state) => ({
-          videos: state.videos.filter((v) => v.id !== id),
-        })),
+      addVideo: (video) => set((state) => ({ 
+        videos: [...state.videos, video] 
+      })),
+      removeVideo: (id) => set((state) => ({ 
+        videos: state.videos.filter((v) => v.id !== id) 
+      })),
+      updateVideo: (id, updates) => set((state) => ({
+        videos: state.videos.map((video) => 
+          video.id === id ? { ...video, ...updates } : video
+        )
+      })),
     }),
     {
       name: 'videos-storage',

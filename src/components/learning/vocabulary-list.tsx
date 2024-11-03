@@ -1,29 +1,30 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Volume2, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, Volume2 } from "lucide-react";
 import { VocabularyWord } from "@/types/vocabulary";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ProgressItem } from "@/store/learning-progress";
+import { useLearningProgress } from "@/store/learning-progress";
 
 interface VocabularyListProps {
   words: VocabularyWord[];
   language: string;
-  completedItems: Record<string, ProgressItem>;
-  onToggleComplete: (wordId: string, completed: boolean) => void;
+  onToggleComplete: (index: number) => void;
+  sessionId: string;
 }
 
 export function VocabularyList({ 
   words, 
   language, 
-  completedItems,
-  onToggleComplete 
+  onToggleComplete,
+  sessionId,
 }: VocabularyListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
+  const { isItemCompleted } = useLearningProgress();
 
   const toggleExpanded = (wordId: string) => {
     const newExpanded = new Set(expandedWords);
@@ -35,15 +36,15 @@ export function VocabularyList({
     setExpandedWords(newExpanded);
   };
 
-  const handleToggleComplete = (wordId: string, completed: boolean) => {
-    onToggleComplete(wordId, completed);
+  const handleToggleComplete = (idx: number, completed: boolean) => {
+    onToggleComplete(idx);
     // Automatically expand when unchecking, collapse when checking
     if (!completed) {
-      setExpandedWords(prev => new Set(prev).add(wordId));
+      setExpandedWords(prev => new Set(prev).add(`word-${idx}`));
     } else {
       setExpandedWords(prev => {
         const newSet = new Set(prev);
-        newSet.delete(wordId);
+        newSet.delete(`word-${idx}`);
         return newSet;
       });
     }
@@ -52,10 +53,11 @@ export function VocabularyList({
   return (
     <div className="space-y-4">
       <audio ref={audioRef} hidden />
-      {words.map((word) => {
-        const isCompleted = completedItems[word.word]?.completed || false;
-        const wordSentenceId = `word-${word.word}`.hashCode();
-        const isExpanded = expandedWords.has(word.word);
+      {words.map((word, index) => {
+        const itemId = `word-${index}`;
+        const isCompleted = isItemCompleted(sessionId, itemId);
+        const wordSentenceId = itemId.hashCode();
+        const isExpanded = expandedWords.has(itemId);
 
         return (
           <motion.div
@@ -103,7 +105,7 @@ export function VocabularyList({
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleToggleComplete(word.word, !isCompleted);
+                      handleToggleComplete(index, !isCompleted);
                     }}
                   >
                     <CheckCircle className={cn(
