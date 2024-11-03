@@ -14,6 +14,7 @@ interface LearningSessionProps {
 }
 
 export function LearningSession({ session, onClose }: LearningSessionProps) {
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}

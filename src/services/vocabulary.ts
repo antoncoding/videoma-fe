@@ -14,7 +14,13 @@ interface GenerateSessionParams {
 export async function generateLearningSession(
   params: GenerateSessionParams,
   accessToken: string
-): Promise<LearningSession> {
+): Promise<{
+  generation: {
+    data: LearningSession;
+    source: string;
+  };
+  status: string;
+}> {
 
   
   const response = await fetch('http://localhost:5000/api/lesson/generate', {

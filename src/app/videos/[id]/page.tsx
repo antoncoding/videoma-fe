@@ -16,6 +16,8 @@ import { useHighlightsStore } from "@/store/highlights";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
+import { useVideoTranscript } from '@/hooks/useVideoTranscript';
+import { useSidebar } from "@/contexts/sidebar-context";
 
 type LearningStep = 'selecting' | 'learning' | 'completed';
 
@@ -25,29 +27,31 @@ export default function VideoPage() {
   const startTime = searchParams.get('t');
   const { videos } = useVideosStore();
   const video = videos.find((v) => v.id === params.id);
+
+  console.log('video', video);
+
   const { getHighlightsForVideo } = useHighlightsStore();
+  const { showRightSidebar, hideRightSidebar } = useSidebar();
   
-  const [transcriptData, setTranscriptData] = useState<any | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [learningStep, setLearningStep] = useState<LearningStep>('selecting');
   const [isGenerating, setIsGenerating] = useState(false);
-
   const { getClassSettings } = useLanguageSettings();
-
-  // complete learning session
   const [learningSession, setLearningSession] = useState<LearningSessionType | null>(null);
-
   const highlights = video ? getHighlightsForVideo(video.id) : [];
-
   const { data: userSession } = useSession();
 
+  const { data: transcriptData, error, loading } = useVideoTranscript(
+    video?.url || '',
+    video?.language || 'es',
+    getClassSettings(video?.language || 'es')?.assistingLanguage || 'en'
+  );
+
   const handleGenerateLesson = async () => {
-    if (!video || !transcriptData || !userSession || !userSession.accessToken) return;
+    if (!video || !transcriptData || !userSession?.accessToken) return;
     
     setIsGenerating(true);
     try {
-      const session = await generateLearningSession({
+      const response = await generateLearningSession({
         highlights,
         videoContext: {
           id: video.id,
@@ -56,8 +60,8 @@ export default function VideoPage() {
           transcript: transcriptData.transcription.data.map((s: any) => s.text).join(' '),
         },
         userLevel: getClassSettings(video.language)?.level || 'intermediate',
-      }, userSession?.accessToken);
-      setLearningSession(session);
+      }, userSession.accessToken);
+      setLearningSession(response.generation.data);
       setLearningStep('learning');
     } catch (error) {
       console.error('Failed to generate lesson:', error);
@@ -70,6 +74,20 @@ export default function VideoPage() {
       setIsGenerating(false);
     }
   };
+
+  // Show vocabulary panel in right sidebar
+  useEffect(() => {
+    if (video) {
+      showRightSidebar(
+        <VocabularyPanel 
+          videoId={video.id}
+          onGenerateSession={handleGenerateLesson}
+          isGenerating={isGenerating}
+        />
+      );
+    }
+    return () => hideRightSidebar();
+  }, [video?.id, isGenerating]); // Minimal dependencies
 
   if (!video) {
     return (
@@ -87,84 +105,64 @@ export default function VideoPage() {
     );
   }
 
-  const renderContent = () => {
-    switch (learningStep) {
-      case 'selecting':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                Select Words & Sentences
-              </h2>
-              <Button
-                onClick={handleGenerateLesson}
-                disabled={isGenerating || highlights.length === 0}
-              >
-                Continue to Lesson
-              </Button>
-            </div>
-            <VideoPlayer
-              videoId={video.id}
-              videoUrl={video.url}
-              transcript={transcriptData?.transcription}
-              translation={transcriptData?.translation}
-              audioLanguage={video.language}
-              isLoading={loading}
-              initialTime={startTime ? parseInt(startTime) : 0}
-              error={error}
-            />
-          </motion.div>
-        );
-
-      case 'learning':
-        return learningSession ? (
-          <motion.div
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                Learning Session
-              </h2>
-              <Button
-                variant="outline"
-                onClick={() => setLearningStep('selecting')}
-              >
-                Back to Video
-              </Button>
-            </div>
-            <LearningSession 
-              session={learningSession}
-              onClose={() => setLearningStep('selecting')}
-            />
-          </motion.div>
-        ) : null;
-
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="flex min-h-screen">
       <div className="flex-1">
         <AnimatePresence mode="wait">
-          {renderContent()}
+          {learningStep === 'selecting' ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  Select Words & Sentences
+                </h2>
+                <Button
+                  onClick={handleGenerateLesson}
+                  disabled={isGenerating || highlights.length === 0}
+                >
+                  Continue to Lesson
+                </Button>
+              </div>
+              <VideoPlayer
+                videoId={video.id}
+                videoUrl={video.url}
+                transcript={transcriptData?.transcription}
+                translation={transcriptData?.translation}
+                audioLanguage={video.language}
+                isLoading={loading}
+                initialTime={startTime ? parseInt(startTime) : 0}
+                error={error}
+              />
+            </motion.div>
+          ) : learningStep === 'learning' && learningSession ? (
+            <motion.div
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  Learning Session
+                </h2>
+                <Button
+                  variant="outline"
+                  onClick={() => setLearningStep('selecting')}
+                >
+                  Back to Video
+                </Button>
+              </div>
+              <LearningSession 
+                session={learningSession}
+                onClose={() => setLearningStep('selecting')}
+              />
+            </motion.div>
+          ) : null}
         </AnimatePresence>
-      </div>
-      <div className="w-80 shrink-0 border-l">
-        <VocabularyPanel 
-          videoId={video.id}
-          onGenerateSession={handleGenerateLesson}
-          isGenerating={isGenerating}
-        />
       </div>
     </div>
   );
