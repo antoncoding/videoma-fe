@@ -66,6 +66,7 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
             </h3>
             <Exercises
               exercises={session.exercises}
+              language={language}
               onComplete={(score: number) => {
                 // Handle exercise completion
               }}

@@ -20,7 +20,7 @@ export function VocabularyPanel({ videoId, onGenerateSession, isGenerating }: Vo
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4">
-        <h3 className="font-semibold">Vocabulary List</h3>
+        <h3 className="font-inter">Vocabulary List</h3>
         {highlights.length > 0 && (
           <Button 
             size="sm" 
@@ -83,7 +83,7 @@ export function VocabularyPanel({ videoId, onGenerateSession, isGenerating }: Vo
                   className="flex items-center justify-between p-2 rounded hover:bg-accent/10"
                 >
                   <div className="flex-1">
-                    <p className="font-medium">{highlight.content}</p>
+                    <p className="text-sm">{highlight.content}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="secondary" className="text-xs">
                         {new Date(highlight.timestamp * 1000).toISOString().substr(11, 8)}

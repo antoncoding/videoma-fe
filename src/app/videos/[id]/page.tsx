@@ -62,6 +62,7 @@ export default function VideoPage() {
     setIsGenerating(true);
     try {
       const response = await generateLearningSession({
+        nonce: video.id,
         highlights,
         videoContext: {
           id: video.id,
@@ -127,11 +128,10 @@ export default function VideoPage() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-4 mx-16 mt-8"
             >
-              <TutorMessage language={video.language} />
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">
-                  Select Words & Sentences
-                </h2>
+                <h1 className="text-2xl font-semibold">
+                  Watch Video
+                </h1>
                 <Button
                   onClick={handleGenerateLesson}
                   disabled={isGenerating || highlights.length === 0}
@@ -139,6 +139,12 @@ export default function VideoPage() {
                   Continue to Lesson
                 </Button>
               </div>
+              <TutorMessage 
+                language={video.language} 
+                message={ isGenerating ?
+                  `Got it! I'm generating your custom lesson... This might take a few minutes.` :
+                  `Hi! I'm your language tutor. Watch the video and click on any words or sentences you'd like to learn. I'll help you understand them better!`}
+              />
               <VideoPlayer
                 videoId={video.id}
                 videoUrl={video.url}

@@ -10,6 +10,7 @@ interface GenerateSessionParams {
   };
   userLevel: string;
   tone: string;
+  nonce?: string;
 }
 
 export async function generateLearningSession(

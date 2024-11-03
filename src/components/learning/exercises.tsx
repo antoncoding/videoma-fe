@@ -2,98 +2,229 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LearningSession } from '@/types/vocabulary';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { CheckCircle, XCircle, ArrowRight, Volume2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAudioPlayback } from '@/hooks/useAudioPlayback';
+import { Badge } from '@/components/ui/badge';
 
 type Exercise = LearningSession['exercises'][0];
 
 interface ExercisesProps {
   exercises: Exercise[];
   onComplete: (score: number) => void;
+  language: string;
 }
 
-export function Exercises({ exercises, onComplete }: ExercisesProps) {
+export function Exercises({ exercises, onComplete, language }: ExercisesProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [userInput, setUserInput] = useState('');
+  const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
+
+  const exercise = exercises[currentIndex];
+  const isLastExercise = currentIndex === exercises.length - 1;
+  const exerciseId = `exercise-${currentIndex}`.hashCode();
 
   const handleAnswer = (answer: string) => {
     setSelectedAnswer(answer);
-    if (answer === exercises[currentIndex].answer) {
+    const isCorrect = answer.toLowerCase() === exercise.answer.toLowerCase();
+    if (isCorrect) {
       setScore(prev => prev + 1);
     }
-
-    setTimeout(() => {
-      if (currentIndex < exercises.length - 1) {
-        setCurrentIndex(prev => prev + 1);
-        setSelectedAnswer(null);
-      } else {
-        onComplete(score);
-      }
-    }, 1000);
   };
 
-  const exercise = exercises[currentIndex];
+  const handleNext = () => {
+    if (isLastExercise) {
+      onComplete(score);
+    } else {
+      setCurrentIndex(prev => prev + 1);
+      setSelectedAnswer(null);
+      setUserInput('');
+    }
+  };
+
+  const renderExerciseContent = () => {
+    switch (exercise.type) {
+      case 'multiple-choice':
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            {exercise.options?.map((option) => {
+              const isSelected = selectedAnswer === option;
+              const isCorrect = option === exercise.answer;
+              const showResult = selectedAnswer !== null;
+
+              return (
+                <Button
+                  key={option}
+                  variant={showResult 
+                    ? isCorrect 
+                      ? "default"
+                      : isSelected 
+                        ? "destructive"
+                        : "outline"
+                    : isSelected 
+                      ? "default"
+                      : "outline"
+                  }
+                  onClick={() => !selectedAnswer && handleAnswer(option)}
+                  disabled={selectedAnswer !== null}
+                  className="relative"
+                >
+                  {option}
+                  {showResult && isCorrect && (
+                    <CheckCircle className="absolute -right-2 -top-2 h-4 w-4 text-green-500" />
+                  )}
+                  {showResult && isSelected && !isCorrect && (
+                    <XCircle className="absolute -right-2 -top-2 h-4 w-4 text-red-500" />
+                  )}
+                </Button>
+              );
+            })}
+          </div>
+        );
+
+      case 'translation':
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-medium">{exercise.question}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => playAudio(exercise.question, language, exerciseId)}
+                disabled={audioLoading}
+              >
+                <Volume2 className={cn(
+                  "h-4 w-4",
+                  isPlaying && "text-primary animate-pulse"
+                )} />
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <Input
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="Type your translation here..."
+                disabled={selectedAnswer !== null}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !selectedAnswer) {
+                    handleAnswer(userInput);
+                  }
+                }}
+              />
+              <Button
+                onClick={() => handleAnswer(userInput)}
+                disabled={selectedAnswer !== null || !userInput}
+              >
+                Check Answer
+              </Button>
+            </div>
+            {selectedAnswer && (
+              <div className={cn(
+                "p-4 rounded-md",
+                selectedAnswer.toLowerCase() === exercise.answer.toLowerCase()
+                  ? "bg-green-500/10"
+                  : "bg-red-500/10"
+              )}>
+                <div className="flex items-center gap-2">
+                  {selectedAnswer.toLowerCase() === exercise.answer.toLowerCase() ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  )}
+                  <p className="font-medium">
+                    {selectedAnswer.toLowerCase() === exercise.answer.toLowerCase()
+                      ? "Correct!"
+                      : "Not quite right"}
+                  </p>
+                </div>
+                <p className="mt-2">Correct answer: {exercise.answer}</p>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'fill-in-blank':
+        return (
+          <div className="space-y-4">
+            <p className="text-lg">
+              {exercise.question.split('___').map((part, i, arr) => (
+                <span key={i}>
+                  {part}
+                  {i < arr.length - 1 && (
+                    <Input
+                      className="w-32 mx-2 inline-block"
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      disabled={selectedAnswer !== null}
+                    />
+                  )}
+                </span>
+              ))}
+            </p>
+            <Button
+              onClick={() => handleAnswer(userInput)}
+              disabled={selectedAnswer !== null || !userInput}
+            >
+              Check Answer
+            </Button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <Card className="p-6">
-      <div className="space-y-4">
+      <audio ref={audioRef} hidden />
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Exercise {currentIndex + 1}/{exercises.length}</h3>
-          <span className="text-sm text-muted-foreground">Score: {score}</span>
-        </div>
-        
-        <p className="text-lg">{exercise.question}</p>
-
-        {exercise.type === 'multiple-choice' && exercise.options && (
-          <div className="grid grid-cols-2 gap-4">
-            {exercise.options.map((option) => (
-              <Button
-                key={option}
-                variant={selectedAnswer === option 
-                  ? option === exercise.answer 
-                    ? "default"
-                    : "destructive"
-                  : "outline"
-                }
-                onClick={() => handleAnswer(option)}
-                disabled={selectedAnswer !== null}
-              >
-                {option}
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold">Exercise {currentIndex + 1}/{exercises.length}</h3>
+            <p className="text-sm text-muted-foreground">
+              {exercise.type === 'multiple-choice' ? 'Choose the correct answer' :
+               exercise.type === 'translation' ? 'Translate this sentence' :
+               'Fill in the blank'}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant="secondary">
+              Score: {score}/{exercises.length}
+            </Badge>
+            {selectedAnswer && (
+              <Button onClick={handleNext}>
+                {isLastExercise ? 'Complete' : 'Next'}
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-            ))}
+            )}
           </div>
-        )}
+        </div>
 
-        {exercise.type === 'translation' && (
-          <div className="space-y-4">
-            <textarea
-              className="w-full p-2 border rounded-md"
-              rows={3}
-              placeholder="Type your translation here..."
-              disabled={selectedAnswer !== null}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleAnswer((e.target as HTMLTextAreaElement).value);
-                }
-              }}
-            />
-            <Button
-              onClick={() => {
-                const textarea = document.querySelector('textarea');
-                if (textarea) handleAnswer(textarea.value);
-              }}
-              disabled={selectedAnswer !== null}
-            >
-              Submit
-            </Button>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            {renderExerciseContent()}
+          </motion.div>
+        </AnimatePresence>
 
         {selectedAnswer && (
-          <div className="mt-4 p-4 bg-muted rounded-md">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-muted rounded-md"
+          >
             <h4 className="font-medium">Explanation</h4>
             <p className="text-sm mt-2">{exercise.explanation}</p>
-          </div>
+          </motion.div>
         )}
       </div>
     </Card>
