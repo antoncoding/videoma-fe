@@ -3,15 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Trash2, ExternalLink, Star, Clock, Volume2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { useVideosStore } from "@/store/videos";
-import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useAudioStore } from '@/store/audio';
 import { getLanguageEmoji } from "@/constants/languages";
-import { useVoiceStore } from "@/store/settings/voice";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 
 interface SavedSentence {
   id: number;
@@ -34,56 +31,32 @@ interface SentenceCardProps {
 
 export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   const { videos } = useVideosStore();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioLoading, setAudioLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { data: session } = useSession();
-  const { getVoiceForLanguage } = useVoiceStore();
-  const { getFromCache, addToCache } = useAudioStore();
-
-  const { playAudio } = useAudioPlayback();
+  const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
 
   // Try to find the video in our local store
   const videoId = sentence.video_url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/)?.[1];
   const storedVideo = videoId ? videos.find(v => v.id === videoId) : null;
 
-  const playAudioWithLoading = async (text: string, language: string) => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      return;
-    }
-
-    setAudioLoading(true);
+  const handlePlayAudio = async () => {
     try {
-      await playAudio(text, language, sentence.id);
+      await playAudio(
+        sentence.original_text, 
+        sentence.original_language,
+        sentence.id // Using the sentence ID for caching
+      );
     } catch (error) {
       toast({
         variant: "destructive",
         title: "❌ Error",
-        description: error instanceof Error ? error.message : "Failed to generate audio",
+        description: error instanceof Error ? error.message : "Failed to play audio",
       });
-    } finally {
-      setAudioLoading(false);
     }
   };
 
-  // Clean up URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      if (audioRef.current?.src) {
-        URL.revokeObjectURL(audioRef.current.src);
-      }
-    };
-  }, []);
-
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
-      <audio 
-        ref={audioRef}
-        onEnded={() => setIsPlaying(false)}
-        onPause={() => setIsPlaying(false)}
-        hidden
-      />
+      <audio ref={audioRef} hidden />
       <div className="space-y-4">
         {/* Video info */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -111,7 +84,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
               variant="ghost"
               size="sm"
               className="ml-auto"
-              onClick={() => playAudioWithLoading(sentence.original_text, sentence.original_language)}
+              onClick={handlePlayAudio}
               disabled={audioLoading || !session}
             >
               {audioLoading ? (

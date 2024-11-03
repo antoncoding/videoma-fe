@@ -46,7 +46,7 @@ export const CHINESE_VOICES: VoiceProfile[] = [
   {
     id: 'chen',
     name: 'Chen',
-    language: 'zh_tw',
+    language: 'zh-TW',
     gender: 'male',
     personality: 'Systematic and thorough',
     description: 'A methodical teacher focusing on proper pronunciation and writing'
@@ -54,7 +54,7 @@ export const CHINESE_VOICES: VoiceProfile[] = [
   {
     id: 'yili',
     name: 'Yili',
-    language: 'zh_tw',
+    language: 'zh-TW',
     gender: 'female',
     personality: 'Encouraging and patient',
     description: 'A supportive teacher who helps you master tones and characters'
@@ -129,7 +129,7 @@ export const JAPANESE_VOICES: VoiceProfile[] = [
 ];
 export const VOICE_PROFILES: Record<string, VoiceProfile[]> = {
   es: SPANISH_VOICES,
-  zh_tw: CHINESE_VOICES,
+  ['zh-TW']: CHINESE_VOICES,
   fr: FRENCH_VOICES,
   en: ENGLISH_VOICES,
   ja: JAPANESE_VOICES,

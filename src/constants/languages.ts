@@ -18,8 +18,8 @@ export const LANGUAGES: Record<string, Language> = {
     description: "One of the world's most spoken languages",
     canBePrimary: false,
   },
-  zh_tw: {
-    code: "zh_tw",
+  'zh-TW': {
+    code: "zh-TW",
     label: "Traditional Chinese",
     nativeName: "繁體中文",
     flag: "🇹🇼",

@@ -53,7 +53,6 @@ export function VocabularyList({ words, onProgress, language }: VocabularyListPr
                       "w-3 h-3 mr-1",
                       isPlaying && "text-primary animate-pulse"
                     )} />
-                    {word.pronunciation}
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">

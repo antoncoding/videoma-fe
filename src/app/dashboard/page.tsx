@@ -22,21 +22,14 @@ export default function Dashboard() {
   } = useLanguageSettings();
   
   // Keep track of current class in local state
-  const [activeClassCode, setActiveClassCode] = useState<string | undefined>(
-    getCurrentClass()?.languageCode
+  const [activeClassCode, setActiveClassCode] = useState<string>(
+    getCurrentClass()?.languageCode ?? 'es'
   );
 
   // If no classes are enrolled, show onboarding
   if (shouldShowOnboarding()) {
     return <OnboardingFlow />;
   }
-
-  // If no active class is selected, use the first enrolled class
-  useEffect(() => {
-    if (!activeClassCode && enrolledClasses.length > 0) {
-      setActiveClassCode(enrolledClasses[0].languageCode);
-    }
-  }, [activeClassCode, enrolledClasses]);
 
   // Update active class when selecting a different class
   const handleClassSelect = (cls: LearningClass) => {

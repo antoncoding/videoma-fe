@@ -143,7 +143,7 @@ function LanguageCard({
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { code: "en", label: "English" },
-                  { code: "zh_tw", label: "Traditional Chinese" }
+                  { code: "zh-TW", label: "Traditional Chinese" }
                 ].filter(lang => lang.code !== language).map((lang) => (
                   <Card
                     key={lang.code}
@@ -411,7 +411,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-4">
             {[
               { code: "en", label: "English" },
-              { code: "zh_tw", label: "Traditional Chinese" }
+              { code: "zh-TW", label: "Traditional Chinese" }
             ].map((lang) => (
               <Card
                 key={lang.code}
