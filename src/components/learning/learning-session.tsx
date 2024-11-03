@@ -9,28 +9,19 @@ interface LearningSessionProps {
   onClose: () => void;
 }
 
-export function LearningSession({ session, onClose }: LearningSessionProps) {
+export function LearningSession({ session }: LearningSessionProps) {
   return (
     <div className="h-full flex flex-col">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
-          {/* Introduction */}
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">{session.title}</h2>
-            <p className="text-sm">{session.introduction.message}</p>
-          </Card>
-
           {/* Summary */}
-          <Card className="p-4 space-y-4">
-            <h3 className="font-semibold">Key Points</h3>
+          <Card className="p-4 space-y-4 p-8">
+          <h2 className="text-lg font-semibold mb-4">{session.title}</h2>
             <ul className="list-disc pl-4 space-y-2">
               {session.summary.keyPoints.map((point, idx) => (
                 <li key={idx} className="text-sm">{point}</li>
               ))}
             </ul>
-            <p className="text-sm text-muted-foreground mt-4">
-              {session.summary.nextSteps}
-            </p>
           </Card>
         </div>
       </ScrollArea>

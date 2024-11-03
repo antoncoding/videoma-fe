@@ -1,73 +1,59 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { BookmarkIcon, CheckCircleIcon, StarIcon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { BookmarkIcon, CheckCircleIcon } from "lucide-react";
 import { motion } from "framer-motion";
-
-interface LearningProgress {
-  completed: boolean;
-  bookmarked: boolean;
-  progress: number;
-}
+import { cn } from "@/lib/utils";
 
 interface LearningTabsProps {
   videoId: string;
   children: React.ReactNode;
   onTabChange?: (tab: string) => void;
+  progress: number;
+  onComplete: () => void;
+  onBookmark: () => void;
+  isBookmarked: boolean;
+  isCompleted: boolean;
 }
 
-export function LearningTabs({ videoId, children, onTabChange }: LearningTabsProps) {
-  const [progress, setProgress] = useState<LearningProgress>(() => {
-    const saved = localStorage.getItem(`learning-progress-${videoId}`);
-    return saved ? JSON.parse(saved) : {
-      completed: false,
-      bookmarked: false,
-      progress: 0,
-    };
-  });
-
-  useEffect(() => {
-    localStorage.setItem(`learning-progress-${videoId}`, JSON.stringify(progress));
-  }, [progress, videoId]);
-
-  const handleComplete = () => {
-    setProgress(prev => ({ ...prev, completed: !prev.completed }));
-  };
-
-  const handleBookmark = () => {
-    setProgress(prev => ({ ...prev, bookmarked: !prev.bookmarked }));
-  };
-
-  const updateProgress = (value: number) => {
-    setProgress(prev => ({ ...prev, progress: value }));
-  };
-
+export function LearningTabs({ 
+  videoId, 
+  children, 
+  onTabChange, 
+  progress,
+  onComplete,
+  onBookmark,
+  isBookmarked,
+  isCompleted
+}: LearningTabsProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Progress value={progress.progress} className="w-[200px]" />
+          <Progress value={progress} className="w-[200px]" />
           <span className="text-sm text-muted-foreground">
-            {progress.progress}% Complete
+            {Math.round(progress)}% Complete
           </span>
         </div>
         <div className="flex gap-2">
           <Button
-            variant={progress.bookmarked ? "default" : "outline"}
+            variant={isBookmarked ? "default" : "outline"}
             size="sm"
-            onClick={handleBookmark}
+            onClick={onBookmark}
           >
             <BookmarkIcon className="h-4 w-4 mr-1" />
-            {progress.bookmarked ? "Bookmarked" : "Bookmark"}
+            {isBookmarked ? "Bookmarked" : "Bookmark"}
           </Button>
           <Button
-            variant={progress.completed ? "default" : "outline"}
+            variant={"outline"}
             size="sm"
-            onClick={handleComplete}
+            onClick={onComplete}
           >
-            <CheckCircleIcon className="h-4 w-4 mr-1" />
-            {progress.completed ? "Completed" : "Mark Complete"}
+            <CheckCircleIcon className={cn(
+              "h-4 w-4 mr-1",
+              isCompleted && "text-green-500"
+            )} />
+            {isCompleted ? "Completed" : "Mark Complete"}
           </Button>
         </div>
       </div>
@@ -79,7 +65,6 @@ export function LearningTabs({ videoId, children, onTabChange }: LearningTabsPro
           <TabsTrigger value="sentences">Sentences</TabsTrigger>
           <TabsTrigger value="exercises">Exercises</TabsTrigger>
         </TabsList>
-
         {children}
       </Tabs>
     </div>

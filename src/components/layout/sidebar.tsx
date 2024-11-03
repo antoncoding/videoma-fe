@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
     icon: <Home className="w-4 h-4" />,
   },
   {
-    title: "Videos",
+    title: "Lessons",
     href: "/videos",
     icon: <Video className="w-4 h-4" />,
     isExpandable: true,

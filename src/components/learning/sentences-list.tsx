@@ -1,7 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Volume2, Brain } from "lucide-react";
-import { useState } from "react";
 import { SentenceAnalysis } from "@/types/vocabulary";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
@@ -9,34 +8,28 @@ import { cn } from "@/lib/utils";
 
 interface SentencesListProps {
   sentences: SentenceAnalysis[];
-  onProgress: (progress: number) => void;
   language: string;
+  completedItems: Record<string, { completed: boolean }>;
+  onToggleComplete: (sentenceId: string, completed: boolean) => void;
 }
 
-export function SentencesList({ sentences, onProgress, language }: SentencesListProps) {
-  const [learnedSentences, setLearnedSentences] = useState<Set<number>>(new Set());
+export function SentencesList({ 
+  sentences, 
+  language,
+  completedItems,
+  onToggleComplete 
+}: SentencesListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
-
-  const toggleLearned = (index: number) => {
-    const newLearned = new Set(learnedSentences);
-    if (newLearned.has(index)) {
-      newLearned.delete(index);
-    } else {
-      newLearned.add(index);
-    }
-    setLearnedSentences(newLearned);
-    onProgress((newLearned.size / sentences.length) * 100);
-  };
 
   return (
     <div className="space-y-4">
       <audio ref={audioRef} hidden />
-      {sentences.map((sentence, idx) => {
-        // Create unique IDs for main sentence and examples
-        const mainSentenceId = `sentence-${idx}`.hashCode();
+      {sentences.map((sentence) => {
+        const isCompleted = completedItems[sentence.original]?.completed || false;
+        const mainSentenceId = `sentence-${sentence.original}`.hashCode();
         
         return (
-          <Card key={idx} className="p-4 space-y-4">
+          <Card key={sentence.original} className="p-4 space-y-4">
             <div className="flex items-start justify-between">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -56,12 +49,15 @@ export function SentencesList({ sentences, onProgress, language }: SentencesList
                 <p className="text-muted-foreground">{sentence.translation}</p>
               </div>
               <Button
-                variant={learnedSentences.has(idx) ? "default" : "outline"}
+                variant={"outline"}
                 size="sm"
-                onClick={() => toggleLearned(idx)}
+                onClick={() => onToggleComplete(sentence.original, !isCompleted)}
               >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                {learnedSentences.has(idx) ? "Learned" : "Mark Learned"}
+                <CheckCircle className={cn(
+                  "h-4 w-4 mr-1",
+                  isCompleted && "text-green-500"
+                )} />
+                {isCompleted ? "Learned" : "Mark Learned"}
               </Button>
             </div>
 
@@ -69,7 +65,7 @@ export function SentencesList({ sentences, onProgress, language }: SentencesList
               <h4 className="text-sm font-medium">Breakdown</h4>
               <div className="grid grid-cols-2 gap-2">
                 {sentence.breakdown.map((part, i) => {
-                  const partId = `sentence-${idx}-part-${i}`.hashCode();
+                  const partId = `sentence-${sentence.original}-part-${i}`.hashCode();
                   
                   return (
                     <div key={i} className="text-sm">
@@ -108,7 +104,7 @@ export function SentencesList({ sentences, onProgress, language }: SentencesList
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Similar Examples</h4>
               {sentence.similarExamples.map((example, i) => {
-                const exampleId = `sentence-${idx}-example-${i}`.hashCode();
+                const exampleId = `sentence-${sentence.original}-example-${i}`.hashCode();
                 
                 return (
                   <div key={i} className="text-sm pl-4 border-l-2">
@@ -138,7 +134,7 @@ export function SentencesList({ sentences, onProgress, language }: SentencesList
               <p className="text-sm text-muted-foreground">{sentence.context.usage}</p>
             </div>
           </Card>
-        )
+        );
       })}
     </div>
   );
