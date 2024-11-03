@@ -32,6 +32,12 @@ export interface SentenceAnalysis {
   };
 }
 
+export enum ExerciseType {
+  FillInBlank = 'Fill in the Blank',
+  MultipleChoice = 'Multiple Choice',
+  TrueFalse = 'True or False',
+}
+
 export interface LearningSession {
   id: string;
   title: string;
@@ -41,7 +47,7 @@ export interface LearningSession {
   vocabulary: VocabularyWord[];
   sentences: SentenceAnalysis[];
   exercises: Array<{
-    type: 'fill-in-blank' | 'multiple-choice' | 'translation';
+    type: ExerciseType;
     question: string;
     answer: string;
     options?: string[];

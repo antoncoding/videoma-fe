@@ -102,9 +102,6 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
 
         <TabPanel value="sentences">
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold">
-              Key Sentences ({session.sentences.length})
-            </h3>
             <SentencesList 
               sentences={session.sentences}
               language={language}
