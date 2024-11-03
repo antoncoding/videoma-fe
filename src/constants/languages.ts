@@ -5,6 +5,7 @@ export interface Language {
   nativeName: string;  // Name in its own language
   available: boolean;  // If it's ready for use
   description?: string;
+  canBePrimary: boolean;
 }
 
 export const LANGUAGES: Record<string, Language> = {
@@ -15,6 +16,7 @@ export const LANGUAGES: Record<string, Language> = {
     flag: "🇪🇸",
     available: true,
     description: "One of the world's most spoken languages",
+    canBePrimary: false,
   },
   zh_tw: {
     code: "zh_tw",
@@ -23,6 +25,7 @@ export const LANGUAGES: Record<string, Language> = {
     flag: "🇹🇼",
     available: true,
     description: "The traditional writing system used in Taiwan and Hong Kong",
+    canBePrimary: true,
   },
   fr: {
     code: "fr",
@@ -31,6 +34,7 @@ export const LANGUAGES: Record<string, Language> = {
     flag: "🇫🇷",
     available: true,
     description: "A romance language known for its elegance",
+    canBePrimary: false,
   },
   en: {
     code: "en",
@@ -39,6 +43,7 @@ export const LANGUAGES: Record<string, Language> = {
     flag: "🇬🇧",
     available: true,
     description: "The global language of business and technology",
+    canBePrimary: true,
   },
   ja: {
     code: "ja",
@@ -47,6 +52,7 @@ export const LANGUAGES: Record<string, Language> = {
     flag: "🇯🇵",
     available: true,
     description: "Coming soon!",
+    canBePrimary: false,
   },
   ko: {
     code: "ko",
@@ -55,9 +61,14 @@ export const LANGUAGES: Record<string, Language> = {
     flag: "🇰🇷",
     available: false,
     description: "Coming soon!",
+    canBePrimary: false,
   },
 };
 
 export const AVAILABLE_LANGUAGES = Object.values(LANGUAGES).filter(
   lang => lang.available
 ); 
+
+export const getLanguageEmoji = (langCode: string = 'en') => {
+  return LANGUAGES[langCode]?.flag || '🌐';
+};

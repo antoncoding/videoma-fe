@@ -14,11 +14,11 @@ import { useLanguageSettings } from "@/hooks/useLanguageSettings";
 import { Badge } from "@/components/ui/badge";
 
 interface VideoSearchProps {
-  language: string;
+  languageCode: string;
   level: string;
 }
 
-export function VideoSearch({ language, level }: VideoSearchProps) {
+export function VideoSearch({ languageCode, level }: VideoSearchProps) {
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +28,8 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
   
   const { primaryLanguage, getAssistingLanguage } = useLanguageSettings();
 
-  console.log(language, getAssistingLanguage(language), primaryLanguage);
-
-  const learningLanguage = getAssistingLanguage(language);
-  const isUsingPrimary = learningLanguage === primaryLanguage;
+  const assistingLanguage = getAssistingLanguage(languageCode);
+  const isUsingPrimary = assistingLanguage === primaryLanguage;
 
   const getYouTubeVideoId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/v\/))([^"&?\/\s]{11})/);
@@ -55,7 +53,7 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
         id: videoId,
         customTitle: 'New Video',
         url: videoUrl,
-        language: language,
+        language: languageCode,
       });
 
       router.push(`/videos/${videoId}`);
@@ -104,20 +102,20 @@ export function VideoSearch({ language, level }: VideoSearchProps) {
 
         <div className="flex flex-col gap-1">
           <p className="text-sm text-muted-foreground">
-            Learning {LANGUAGES[language].label} at{" "}
+            Learning {LANGUAGES[languageCode].label} at{" "}
             <span className="font-medium">
               {level.charAt(0).toUpperCase() + level.slice(1)}
             </span> level
           </p>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{LANGUAGES[language].flag}</span>
+            <span>{LANGUAGES[languageCode].flag}</span>
             <span>→</span>
-            <span>{LANGUAGES[learningLanguage].flag}</span>
+            <span>{LANGUAGES[assistingLanguage].flag}</span>
             <Badge variant="secondary" className="text-xs">
               {isUsingPrimary ? (
                 "Using primary language"
               ) : (
-                `Learning with ${LANGUAGES[learningLanguage].label}`
+                `Translating to ${LANGUAGES[assistingLanguage].label}`
               )}
             </Badge>
           </div>

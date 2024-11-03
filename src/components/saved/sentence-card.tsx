@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useAudioStore } from '@/store/audio';
 import { useLanguageSettings } from "@/hooks/useLanguageSettings";
 import { getLanguageEmoji } from "@/constants/languages";
+import { useVoiceStore } from "@/store/settings/voice";
 interface SavedSentence {
   id: number;
   video_url: string;
@@ -36,7 +37,7 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { data: session } = useSession();
-  const { getVoiceForLanguage } = useLanguageSettings();
+  const { getVoiceForLanguage } = useVoiceStore();
   const { getFromCache, addToCache } = useAudioStore();
 
   // Try to find the video in our local store

@@ -59,8 +59,7 @@ export function VideoPlayer({
     getAssistingLanguage,
   } = useLanguageSettings();
 
-  // Get the preferred translation language for this specific language class
-  const translationLanguage = getAssistingLanguage(audioLanguage) || primaryLanguage;
+  const assistingLanguage = getAssistingLanguage(audioLanguage);
 
   const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
 
@@ -135,7 +134,7 @@ export function VideoPlayer({
       videoId,
       timestamp: original.start,
       audioLanguage,
-      targetLanguage: translationLanguage,
+      targetLanguage: assistingLanguage,
       source: transcript.source,
     });
   };
@@ -198,12 +197,12 @@ export function VideoPlayer({
               <div className="min-h-[60px] bg-black/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
                   <span className="text-lg" role="img" aria-label={LANGUAGES[audioLanguage]?.label}>
-                    {getLanguageEmoji(audioLanguage)}
+                    {LANGUAGES[audioLanguage].flag}
                   </span>
                 </div>
                 <p className="text-center flex-1">
                   {isLoading ? (
-                    <span className="animate-pulse">✨ Transcribing video...</span>
+                    <span className="animate-pulse">✨ Transcribing...</span>
                   ) : (
                     getCurrentSubtitle(transcript.data)?.text || " "
                   )}
@@ -213,13 +212,18 @@ export function VideoPlayer({
             {showTranslationSubtitle && (
               <div className="min-h-[60px] bg-primary/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
-                  <span className="text-lg" role="img" aria-label={LANGUAGES[translationLanguage]?.label}>
-                    {getLanguageEmoji(translationLanguage)}
+                  <span className="text-lg" role="img" aria-label={LANGUAGES[assistingLanguage]?.label}>
+                    {LANGUAGES[assistingLanguage].flag}
                   </span>
+                  {assistingLanguage !== primaryLanguage && (
+                    <Badge variant="secondary" className="text-xs">
+                      Custom translation
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-center flex-1">
                   {isLoading ? (
-                    <span className="animate-pulse">✨ Preparing translation...</span>
+                    <span className="animate-pulse">✨ Translating...</span>
                   ) : (
                     translation && getCurrentSubtitle(translation.data)?.text || " "
                   )}
@@ -343,8 +347,8 @@ export function VideoPlayer({
               onScroll={handleScroll}
             >
               <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
-                <span className="text-lg" role="img" aria-label={translationLanguage}>
-                  {getLanguageEmoji(translationLanguage)}
+                <span className="text-lg" role="img" aria-label={assistingLanguage}>
+                  {getLanguageEmoji(assistingLanguage)}
                 </span>
                 <h3 className="font-semibold">Translation</h3>
                 {hasTranslationError ? (

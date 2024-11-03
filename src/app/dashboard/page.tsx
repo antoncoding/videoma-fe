@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOnboardingStore } from "@/store/onboarding";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
@@ -10,26 +10,53 @@ import { Card } from "@/components/ui/card";
 import { LANGUAGES } from "@/constants/languages";
 import { VOICE_PROFILES } from "@/constants/voices";
 import { cn } from "@/lib/utils";
+import type { LearningClass } from "@/store/settings/language";
 
 export default function Dashboard() {
-  const { hasCompletedOnboarding } = useOnboardingStore();
+  const { shouldShowOnboarding } = useOnboardingStore();
   const { 
-    targetLanguages, 
+    enrolledClasses, 
     voices, 
     updateClass,
-    getCurrentLanguage 
+    getCurrentClass,
   } = useLanguageSettings();
-  const router = useRouter();
+  
+  // Keep track of current class in local state
+  const [activeClassCode, setActiveClassCode] = useState<string | undefined>(
+    getCurrentClass()?.languageCode
+  );
 
-  // Show onboarding for new users
-  if (!hasCompletedOnboarding) {
+  // If no classes are enrolled, show onboarding
+  if (shouldShowOnboarding()) {
     return <OnboardingFlow />;
   }
 
-  const currentClass = getCurrentLanguage();
+  // If no active class is selected, use the first enrolled class
+  useEffect(() => {
+    if (!activeClassCode && enrolledClasses.length > 0) {
+      setActiveClassCode(enrolledClasses[0].languageCode);
+    }
+  }, [activeClassCode, enrolledClasses]);
+
+  // Update active class when selecting a different class
+  const handleClassSelect = (cls: LearningClass) => {
+    setActiveClassCode(cls.languageCode);
+    updateClass(
+      cls.languageCode,
+      cls.level,
+      voices[cls.languageCode]?.voiceId || '',
+      cls.assistingLanguage
+    );
+  };
+
+  // Get the current active class
+  const activeClass = enrolledClasses.find(cls => cls.languageCode === activeClassCode) 
+    || getCurrentClass();
+
+  const currentClass = getCurrentClass();
   const currentVoice = currentClass 
-    ? VOICE_PROFILES[currentClass.code]?.find(
-        v => v.id === voices[currentClass.code]?.voiceId
+    ? VOICE_PROFILES[currentClass.languageCode]?.find(
+        v => v.id === voices[currentClass.languageCode]?.voiceId
       )
     : null;
 
@@ -44,24 +71,20 @@ export default function Dashboard() {
 
       {/* Class Selection */}
       <div className="grid grid-cols-2 gap-6">
-        {targetLanguages.map((lang) => {
-          const language = LANGUAGES[lang.code];
-          const voice = VOICE_PROFILES[lang.code]?.find(
-            v => v.id === voices[lang.code]?.voiceId
+        {enrolledClasses.map((cls: LearningClass) => {
+          const language = LANGUAGES[cls.languageCode];
+          const voice = VOICE_PROFILES[cls.languageCode]?.find(
+            v => v.id === voices[cls.languageCode]?.voiceId
           );
 
           return (
             <Card
-              key={lang.code}
+              key={cls.languageCode}
               className={cn(
                 "p-6 cursor-pointer hover:border-primary transition-colors",
-                currentClass?.code === lang.code && "border-primary bg-primary/5"
+                activeClass?.languageCode === cls.languageCode && "border-primary bg-primary/5"
               )}
-              onClick={() => updateClass(
-                lang.code,
-                lang.level,
-                voices[lang.code]?.voiceId || ''
-              )}
+              onClick={() => handleClassSelect(cls)}
             >
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -69,7 +92,7 @@ export default function Dashboard() {
                   <div>
                     <h3 className="text-xl font-semibold">{language.label}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {lang.level.charAt(0).toUpperCase() + lang.level.slice(1)} Level
+                      {cls.level.charAt(0).toUpperCase() + cls.level.slice(1)} Level
                     </p>
                   </div>
                 </div>
@@ -81,16 +104,16 @@ export default function Dashboard() {
                 )}
               </div>
             </Card>
-          )
+          );
         })}
       </div>
 
-      {currentClass && (
+      {activeClass && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold">
-                Start a {LANGUAGES[currentClass.code].label} Lesson
+                Start a {LANGUAGES[activeClass.languageCode].label} Lesson
               </h2>
               <p className="text-sm text-muted-foreground">
                 {currentVoice?.name} will help you learn through video content
@@ -99,11 +122,11 @@ export default function Dashboard() {
           </div>
 
           <VideoSearch 
-            language={currentClass.code}
-            level={currentClass.level}
+            languageCode={activeClass.languageCode}
+            level={activeClass.level}
           />
         </div>
       )}
     </div>
   );
-} 
+}

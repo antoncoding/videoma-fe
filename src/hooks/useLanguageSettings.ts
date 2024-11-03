@@ -1,15 +1,16 @@
 import { useLanguageStore } from '@/store/settings/language';
 import { useVoiceStore } from '@/store/settings/voice';
 import { LevelValue } from '@/constants/levels';
-import { VOICE_PROFILES } from '@/constants/voices';
 
 export function useLanguageSettings() {
   const {
     primaryLanguage,
-    targetLanguages,
+    enrolledClasses,
     setPrimaryLanguage,
-    updateClass: updateLanguageClass,
-    removeClass: removeLanguageClass,
+    enrollInClass,
+    updateClassSettings,
+    dropClass,
+    getCurrentClass,
     getAssistingLanguage,
   } = useLanguageStore();
 
@@ -19,45 +20,49 @@ export function useLanguageSettings() {
     removeVoice,
   } = useVoiceStore();
 
-  // Single way to update a class
+  // For updating existing class
   const updateClass = (
-    code: string,
+    languageCode: string,
     level: LevelValue,
     voiceId: string,
     assistingLanguage?: string
   ) => {
-    updateLanguageClass(code, level, assistingLanguage);
-    setVoice(code, voiceId);
+    updateClassSettings(languageCode, level, assistingLanguage);
+    setVoice(languageCode, voiceId);
   };
 
-  // Single way to remove a class
-  const removeClass = (code: string) => {
-    removeLanguageClass(code);
-    removeVoice(code);
+  // For adding new class
+  const startNewClass = (
+    languageCode: string,
+    level: LevelValue,
+    voiceId: string,
+    assistingLanguage?: string
+  ) => {
+    enrollInClass(languageCode, level, assistingLanguage);
+    setVoice(languageCode, voiceId);
   };
 
-  const getVoiceForLanguage = (code: string) => {
-    return voices[code]?.voiceId || VOICE_PROFILES[code][0].id
+  const removeClass = (languageCode: string) => {
+    dropClass(languageCode);
+    removeVoice(languageCode);
   };
 
   return {
     // Settings
     primaryLanguage,
-    targetLanguages,
+    enrolledClasses,
     setPrimaryLanguage,
     
     // Class operations
     updateClass,
+    startNewClass,
     removeClass,
-    classes,
     
     // Queries
+    getCurrentClass,
     getAssistingLanguage,
     
     // Voice settings
     voices,
-
-    // assistant functions
-    getVoiceForLanguage,
   };
 } 

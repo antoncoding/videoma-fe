@@ -10,6 +10,7 @@ import { GraduationCap } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { LEVELS, type LevelValue } from "@/constants/levels";
 import { useSettingsStore } from '@/store/settings';
+import { useLanguageSettings } from '@/hooks/useLanguageSettings';
 
 export function OnboardingFlow() {
   const [step, setStep] = useState(0);
@@ -20,6 +21,7 @@ export function OnboardingFlow() {
   const { updateSettings } = useSettingsStore();
   const { markOnboardingComplete } = useOnboardingStore();
   const router = useRouter();
+  const { startNewClass, setPrimaryLanguage } = useLanguageSettings();
 
   const availableLanguages = Object.values(LANGUAGES).filter(
     lang => lang.available && lang.code !== nativeLanguage
@@ -28,13 +30,16 @@ export function OnboardingFlow() {
   const handleComplete = () => {
     if (!selectedLanguage || !selectedLevel || !selectedTeacher || !nativeLanguage) return;
 
-    updateSettings({
-      nativeLanguage,
-      targetLanguages: [{ code: selectedLanguage, level: selectedLevel }],
-      languageVoices: {
-        [selectedLanguage]: { voiceId: selectedTeacher }
-      }
-    });
+    // Set primary language
+    setPrimaryLanguage(nativeLanguage);
+
+    // Enroll in first class
+    startNewClass(
+      selectedLanguage,
+      selectedLevel,
+      selectedTeacher,
+      nativeLanguage // Use primary language as default assisting language
+    );
 
     markOnboardingComplete();
     router.push('/dashboard');
@@ -55,12 +60,12 @@ export function OnboardingFlow() {
                 <GraduationCap className="w-12 h-12 mx-auto text-primary" />
                 <h1 className="text-3xl font-bold">Welcome to Vidioma</h1>
                 <p className="text-muted-foreground">
-                  First, let's set your primary learning language
+                  First, let's set your native language you're comfortable with
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 {Object.values(LANGUAGES)
-                  .filter(lang => lang.available)
+                  .filter(lang => lang.canBePrimary)
                   .map((lang) => (
                     <Card
                       key={lang.code}
@@ -101,7 +106,7 @@ export function OnboardingFlow() {
               <div className="text-center space-y-4">
                 <h2 className="text-2xl font-bold">Choose a Language to Learn</h2>
                 <p className="text-muted-foreground">
-                  Select the language you want to start with
+                  Select the language you want to start learning
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -141,7 +146,7 @@ export function OnboardingFlow() {
             </motion.div>
           )}
 
-          {step === 2 && selectedLanguage && selectedLevel && (
+          {step === 2 && selectedLanguage && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -162,7 +167,7 @@ export function OnboardingFlow() {
                       "p-4 cursor-pointer hover:border-primary transition-colors",
                       selectedLevel === level.value && "border-primary bg-primary/5"
                     )}
-                    onClick={() => setSelectedLevel(level.value as LevelValue)}
+                    onClick={() => setSelectedLevel(level.value)}
                   >
                     <h3 className="font-semibold">{level.label}</h3>
                     <p className="text-sm text-muted-foreground">

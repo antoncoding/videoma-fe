@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { toast, useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { LANGUAGES } from "@/constants/languages";
 import { LEVELS, type LevelValue } from "@/constants/levels";
@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useOnboardingStore } from "@/store/onboarding";
+import { useRouter } from "next/navigation";
 
 function LanguageCard({ 
   language, 
@@ -43,15 +45,6 @@ function LanguageCard({
   const langInfo = LANGUAGES[language];
   const voices = VOICE_PROFILES[language as keyof typeof VOICE_PROFILES] || [];
   const selectedVoice = voices.find(v => v.id === voiceId);
-
-  const handleSave = () => {
-    onUpdate(language, localLevel, localVoiceId, localPreferredLanguage);
-    setIsOpen(false);
-    toast({
-      title: "✨ Class updated",
-      description: `Now learning ${LANGUAGES[language].label} with ${localPreferredLanguage ? LANGUAGES[localPreferredLanguage].label : 'primary language'}`,
-    });
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -224,8 +217,11 @@ function AddClassDialog({ onAdd, existingLanguages }: AddClassDialogProps) {
   const handleAdd = () => {
     if (selectedLanguage && selectedLevel && selectedVoice) {
       onAdd(selectedLanguage, selectedLevel, selectedVoice);
+      toast({
+        title: "✨ New class added",
+        description: `Started learning ${LANGUAGES[selectedLanguage].label}!`,
+      });
       setIsOpen(false);
-      // Reset selections
       setSelectedLanguage(null);
       setSelectedLevel("beginner");
       setSelectedVoice(null);
@@ -351,26 +347,36 @@ function AddClassDialog({ onAdd, existingLanguages }: AddClassDialogProps) {
 export default function SettingsPage() {
   const {
     primaryLanguage,
-    targetLanguages,
+    enrolledClasses,
     setPrimaryLanguage,
     updateClass,
+    startNewClass,
     removeClass,
     voices,
   } = useLanguageSettings();
   const { toast } = useToast();
+  const { shouldShowOnboarding } = useOnboardingStore();
+  const router = useRouter();
+
+  // Redirect to onboarding if no classes are enrolled
+  useEffect(() => {
+    if (shouldShowOnboarding()) {
+      router.push('/dashboard');
+    }
+  }, [shouldShowOnboarding, router]);
 
   const handleUpdateClass = (
-    code: string, 
+    languageCode: string, 
     level: LevelValue, 
     voiceId: string, 
-    preferredLanguage?: string
+    assistingLanguage?: string
   ) => {
-    updateClass(code, level, voiceId, preferredLanguage);
+    updateClass(languageCode, level, voiceId, assistingLanguage);
     toast({
       title: "✨ Class updated",
-      description: preferredLanguage 
-        ? `Now learning ${LANGUAGES[code].label} with ${LANGUAGES[preferredLanguage].label}`
-        : `Updated ${LANGUAGES[code].label} class settings`,
+      description: assistingLanguage 
+        ? `Now learning ${LANGUAGES[languageCode].label} with ${LANGUAGES[assistingLanguage].label}`
+        : `Updated ${LANGUAGES[languageCode].label} class settings`,
     });
   };
 
@@ -396,8 +402,8 @@ export default function SettingsPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             {[
-              { code: "en", label: "English", description: "Global language for learning" },
-              { code: "zh_tw", label: "Traditional Chinese", description: "Traditional characters used in Taiwan and Hong Kong" }
+              { code: "en", label: "English" },
+              { code: "zh_tw", label: "Traditional Chinese" }
             ].map((lang) => (
               <Card
                 key={lang.code}
@@ -405,30 +411,19 @@ export default function SettingsPage() {
                   "p-6 cursor-pointer hover:border-primary transition-colors",
                   primaryLanguage === lang.code && "border-primary bg-primary/5"
                 )}
-                onClick={() => {
-                  setPrimaryLanguage(lang.code);
-                  toast({
-                    title: "✨ Primary language updated",
-                    description: `${LANGUAGES[lang.code].label} is now your primary learning language.`,
-                  });
-                }}
+                onClick={() => setPrimaryLanguage(lang.code)}
               >
                 <div className="flex items-center gap-4">
                   <span className="text-4xl">{LANGUAGES[lang.code].flag}</span>
                   <div>
                     <h3 className="font-semibold">{lang.label}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {lang.description}
-                    </p>
+                    {primaryLanguage === lang.code && (
+                      <Badge variant="secondary" className="mt-1">
+                        Currently your primary language
+                      </Badge>
+                    )}
                   </div>
                 </div>
-                {primaryLanguage === lang.code && (
-                  <div className="mt-2">
-                    <Badge variant="secondary" className="text-sm">
-                      Currently your primary learning language
-                    </Badge>
-                  </div>
-                )}
               </Card>
             ))}
           </div>
@@ -445,20 +440,20 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid gap-6">
-          {targetLanguages.map((lang) => (
+          {enrolledClasses.map((cls) => (
             <LanguageCard
-              key={lang.code}
-              language={lang.code}
-              level={lang.level}
-              voiceId={voices[lang.code]?.voiceId || ''}
+              key={cls.languageCode}
+              language={cls.languageCode}
+              level={cls.level}
+              voiceId={voices[cls.languageCode]?.voiceId || ''}
               onUpdate={handleUpdateClass}
-              onRemove={() => removeClass(lang.code)}
+              onRemove={() => removeClass(cls.languageCode)}
             />
           ))}
 
           <AddClassDialog 
             onAdd={handleUpdateClass}
-            existingLanguages={targetLanguages.map(lang => lang.code)}
+            existingLanguages={enrolledClasses.map(cls => cls.languageCode)}
           />
         </div>
       </div>

@@ -2,54 +2,94 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { LevelValue } from '@/constants/levels';
 
-interface TargetLanguage {
-  code: string;
+export interface LearningClass {
+  languageCode: string;
   level: LevelValue;
   assistingLanguage?: string;
 }
 
 interface LanguageState {
   primaryLanguage: string;
-  targetLanguages: TargetLanguage[];
+  enrolledClasses: LearningClass[];
 }
 
 interface LanguageStore extends LanguageState {
   setPrimaryLanguage: (code: string) => void;
-  updateClass: (code: string, level: LevelValue, assistingLanguage?: string) => void;
-  removeClass: (code: string) => void;
-  getAssistingLanguage: (code: string) => string;
+  enrollInClass: (languageCode: string, level: LevelValue, assistingLanguage?: string) => void;
+  updateClassSettings: (languageCode: string, level: LevelValue, assistingLanguage?: string) => void;
+  dropClass: (languageCode: string) => void;
+  getCurrentClass: () => LearningClass | undefined;
+  getAssistingLanguage: (languageCode: string) => string;
 }
 
 export const useLanguageStore = create<LanguageStore>()(
   persist(
     (set, get) => ({
       primaryLanguage: "en",
-      targetLanguages: [],
+      enrolledClasses: [
+        {
+          languageCode: "es",
+          level: "beginner",
+          assistingLanguage: "en"
+        }
+      ],
       
       setPrimaryLanguage: (code) => 
-        set({ primaryLanguage: code }),
-      
-      updateClass: (code, level, assistingLanguage) => 
         set((state) => ({
-          targetLanguages: [
-            { code, level, assistingLanguage },
-            ...state.targetLanguages.filter(lang => lang.code !== code)
-          ],
+          ...state,
+          primaryLanguage: code
         })),
       
-      removeClass: (code) =>
+      enrollInClass: (languageCode, level, assistingLanguage) => 
+        set((state) => {
+          const newClass = { languageCode, level, assistingLanguage };
+          const existingIndex = state.enrolledClasses.findIndex(
+            cls => cls.languageCode === languageCode
+          );
+
+          const updatedClasses = existingIndex >= 0
+            ? [
+                newClass,
+                ...state.enrolledClasses.slice(0, existingIndex),
+                ...state.enrolledClasses.slice(existingIndex + 1)
+              ]
+            : [newClass, ...state.enrolledClasses];
+
+          return {
+            ...state,
+            enrolledClasses: updatedClasses
+          };
+        }),
+      
+      updateClassSettings: (languageCode, level, assistingLanguage) =>
         set((state) => ({
-          targetLanguages: state.targetLanguages.filter(lang => lang.code !== code),
+          ...state,
+          enrolledClasses: state.enrolledClasses.map(cls =>
+            cls.languageCode === languageCode 
+              ? { ...cls, level, assistingLanguage }
+              : cls
+          )
+        })),
+      
+      dropClass: (languageCode) =>
+        set((state) => ({
+          ...state,
+          enrolledClasses: state.enrolledClasses.filter(
+            cls => cls.languageCode !== languageCode
+          )
         })),
 
-      getAssistingLanguage: (code) => {
+      getCurrentClass: () => get().enrolledClasses[0],
+
+      getAssistingLanguage: (languageCode) => {
         const state = get();
-        const targetLang = state.targetLanguages.find(lang => lang.code === code);
-        return targetLang?.assistingLanguage || state.primaryLanguage;
+        const cls = state.enrolledClasses.find(c => c.languageCode === languageCode);
+        return cls?.assistingLanguage || state.primaryLanguage;
       },
     }),
     {
-      name: 'language-settings',
+      name: 'language-settings-v2',
+      version: 1,
     }
   )
 ); 
