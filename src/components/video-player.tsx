@@ -10,27 +10,28 @@ import { Star, Info, AlertCircle } from "lucide-react";
 import { useSentenceManager } from '@/hooks/useSentenceManager';
 import { useLanguageSettings } from '@/hooks/useLanguageSettings';
 import { LANGUAGES, getLanguageEmoji } from "@/constants/languages";
-
-interface Subtitle {
-  text: string;
-  start: number;
-  duration: number;
-}
+import { useHighlightsStore } from '@/store/highlights';
+import { VocabularyHighlight } from '@/types/vocabulary';
+import { TranscriptData, Subtitle } from '@/types/subtitle';
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { cn } from '@/lib/utils';
 
 interface VideoPlayerProps {
   videoUrl: string;
   videoId: string;
-  transcript: {
-    source: string;
-    data: Subtitle[];
-  };
-  translation?: {
-    source: string;
-    data: Subtitle[];
-  };
+  transcript?: TranscriptData;
+  translation?: TranscriptData;
   audioLanguage?: string;
   isLoading?: boolean;
   initialTime?: number;
+  error?: string | null;
+}
+
+interface HighlightState {
+  text: string;
+  type: 'word' | 'sentence';
+  subtitleId: string;
 }
 
 export function VideoPlayer({ 
@@ -41,6 +42,7 @@ export function VideoPlayer({
   audioLanguage = 'es',
   isLoading = false,
   initialTime = 0,
+  error,
 }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null);
   const originalTranscriptRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,9 @@ export function VideoPlayer({
   const [showOriginalSubtitle, setShowOriginalSubtitle] = useState(true);
   const [showTranslationSubtitle, setShowTranslationSubtitle] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { addHighlight, getHighlightsForVideo } = useHighlightsStore();
+  const [selectedText, setSelectedText] = useState<HighlightState | null>(null);
+  const highlights = getHighlightsForVideo(videoId);
 
   const { 
     primaryLanguage, 
@@ -80,7 +85,7 @@ export function VideoPlayer({
 
   // Auto-scroll logic - only when playing
   useEffect(() => {
-    if (!isUserScrolling && isPlaying) {
+    if (!isUserScrolling && isPlaying && transcript) {
       const currentOriginal = getCurrentSubtitle(transcript.data);
       const currentTranslation = translation && getCurrentSubtitle(translation.data);
 
@@ -122,6 +127,8 @@ export function VideoPlayer({
     original: Subtitle,
   ) => {
 
+    if (!transcript) return;
+
     // find corresponding translation
     const translationSubtitle = translation?.data.find(
       (item) => item.start === original.start
@@ -147,10 +154,151 @@ export function VideoPlayer({
     console.log("Show details for:", original, translation);
   };
 
+  const handleTextSelection = (
+    event: MouseEvent, 
+    type: 'word' | 'sentence', 
+    text: string,
+    subtitleId: string
+  ) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setSelectedText(null);
+      return;
+    }
+
+    const selectedText = selection.toString().trim();
+    if (!selectedText) {
+      setSelectedText(null);
+      return;
+    }
+
+    setSelectedText({
+      text: selectedText,
+      type,
+      subtitleId
+    });
+  };
+
+  const handleHighlight = (subtitle: Subtitle) => {
+    if (!selectedText) return;
+
+    const highlight: VocabularyHighlight = {
+      type: selectedText.type,
+      content: selectedText.text,
+      timestamp: subtitle.start,
+      context: subtitle.text,
+    };
+
+    addHighlight(videoId, highlight);
+    setSelectedText(null);
+
+    toast({
+      title: "✨ Added to vocabulary list",
+      description: `${selectedText.type === 'word' ? 'Word' : 'Sentence'} saved for learning`,
+    });
+  };
+
+  const renderSubtitleText = (subtitle: Subtitle, isTranslation: boolean = false) => {
+    const subtitleId = `${subtitle.start}-${subtitle.text}`;
+    const existingHighlights = highlights.filter(h => h.context === subtitle.text);
+    const words = subtitle.text.split(' ');
+    
+    return (
+      <div className="relative group">
+        {/* Timestamp */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[calc(100%+0.5rem)] 
+          text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+          {formatTime(subtitle.start)}
+        </div>
+
+        {/* Text content */}
+        <div
+          className={cn(
+            "p-2 rounded transition-colors",
+            currentTime >= subtitle.start && 
+            currentTime <= (subtitle.start + subtitle.duration) && 
+            "bg-accent/50",
+            "hover:bg-accent/20"
+          )}
+        >
+          <div className="flex justify-between items-start gap-2">
+            <p
+              className={cn(
+                "flex-1",
+                existingHighlights.some(h => h.type === 'sentence') && "bg-yellow-100/50 rounded px-1"
+              )}
+              onClick={() => handleSubtitleClick(subtitle.start)}
+              onMouseUp={(e) => {
+                const selection = window.getSelection();
+                if (selection && selection.toString().includes(' ')) {
+                  handleTextSelection(e.nativeEvent, 'sentence', subtitle.text, subtitleId);
+                }
+              }}
+            >
+              {words.map((word, idx) => {
+                const isHighlighted = existingHighlights.some(
+                  h => h.type === 'word' && h.content === word
+                );
+                
+                return (
+                  <span
+                    key={idx}
+                    className={cn(
+                      "cursor-pointer px-0.5 rounded",
+                      isHighlighted && "bg-yellow-200/50",
+                      "hover:bg-primary/10"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const highlight: VocabularyHighlight = {
+                        type: 'word',
+                        content: word,
+                        timestamp: subtitle.start,
+                        context: subtitle.text,
+                      };
+                      addHighlight(videoId, highlight);
+                      toast({
+                        title: "✨ Word added",
+                        description: `Added "${word}" to vocabulary list`,
+                      });
+                    }}
+                  >
+                    {word}{' '}
+                  </span>
+                );
+              })}
+            </p>
+
+            {/* Action buttons */}
+            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => onSaveSentence(subtitle)}
+                disabled={isSaving}
+              >
+                <Star className="h-3 w-3" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => handleShowDetails(subtitle)}
+              >
+                <Info className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="relative space-y-4">
-      {/* Video player with reduced max-width */}
-      <div className="relative max-w-[800px] mx-auto">
+      {/* Video player section */}
+      <div className="relative">
         <div className="aspect-video">
           <ReactPlayer
             ref={playerRef}
@@ -193,7 +341,7 @@ export function VideoPlayer({
         {/* Floating subtitles */}
         {showFloatingSubtitles && !isLoading && (
           <div className="absolute bottom-12 left-0 right-0 mx-auto w-[90%] space-y-2">
-            {showOriginalSubtitle && (
+            {showOriginalSubtitle && transcript && (
               <div className="min-h-[60px] bg-black/80 text-white p-4 rounded-lg flex items-center">
                 <div className="flex items-center gap-2 mr-4">
                   <span className="text-lg" role="img" aria-label={LANGUAGES[audioLanguage]?.label}>
@@ -235,36 +383,38 @@ export function VideoPlayer({
       </div>
 
       {/* Controls and transcripts */}
-      <div className="max-w-[800px] mx-auto">
-        <div className="flex items-center gap-6 mb-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={showFloatingSubtitles}
-              onCheckedChange={setShowFloatingSubtitles}
-              disabled={isLoading}
-            />
-            <Label>Show floating subtitles</Label>
+      <div>
+        <div className="flex items-center justify-between gap-6 mb-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={showFloatingSubtitles}
+                onCheckedChange={setShowFloatingSubtitles}
+                disabled={isLoading}
+              />
+              <Label>Show floating subtitles</Label>
+            </div>
+            {showFloatingSubtitles && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showOriginalSubtitle}
+                    onCheckedChange={setShowOriginalSubtitle}
+                    disabled={isLoading}
+                  />
+                  <Label>Show original</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showTranslationSubtitle}
+                    onCheckedChange={setShowTranslationSubtitle}
+                    disabled={isLoading}
+                  />
+                  <Label>Show translation</Label>
+                </div>
+              </>
+            )}
           </div>
-          {showFloatingSubtitles && (
-            <>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={showOriginalSubtitle}
-                  onCheckedChange={setShowOriginalSubtitle}
-                  disabled={isLoading}
-                />
-                <Label>Show original</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={showTranslationSubtitle}
-                  onCheckedChange={setShowTranslationSubtitle}
-                  disabled={isLoading}
-                />
-                <Label>Show translation</Label>
-              </div>
-            </>
-          )}
         </div>
 
         <Card className="p-4">
@@ -282,62 +432,30 @@ export function VideoPlayer({
                   <span className="text-sm text-muted-foreground animate-pulse">
                     ✨ Transcribing...
                   </span>
+                ) : !transcript ? (
+                  <Badge> No transcript </Badge>
                 ) : (
                   <Badge variant={transcript.source === "youtube" ? "secondary" : "default"}>
                     {transcript.source === "youtube" ? "YouTube" : "Whisper AI"}
                   </Badge>
                 )}
               </div>
-              {isLoading ? (
-                <div className="space-y-2 p-2">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-16 bg-muted rounded animate-pulse" />
-                  ))}
+              
+              {transcript && transcript.data.map((item, index) => (
+                <div
+                  key={`${item.start}-${index}`}
+                  id={`original-${item.start}`}
+                  className={cn(
+                    "p-2 rounded subtitle-item",
+                    currentTime >= item.start && 
+                    currentTime <= (item.start + item.duration) && 
+                    "bg-accent"
+                  )}
+                  onClick={() => handleSubtitleClick(item.start)}
+                >
+                  {renderSubtitleText(item)}
                 </div>
-              ) : (
-                transcript.data.map((item, index) => (
-                  <div
-                    key={`transcript-${index}-${item.duration}`}
-                    id={`original-${item.start}`}
-                    className={`group p-2 hover:bg-muted cursor-pointer transition-colors relative ${
-                      currentTime >= item.start && 
-                      currentTime <= (item.start + item.duration)
-                        ? "bg-primary/10"
-                        : ""
-                    }`}
-                    onClick={() => handleSubtitleClick(item.start)}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1">
-                        <span className="text-sm text-muted-foreground">
-                          {formatTime(item.start)}
-                        </span>
-                        <p className="font-inter">{item.text}</p>
-                      </div>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSaveSentence(item);
-                          }}
-                          className="p-1 hover:bg-primary/20 rounded"
-                        >
-                          <Star className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShowDetails(item, translation?.data[index]);
-                          }}
-                          className="p-1 hover:bg-primary/20 rounded"
-                        >
-                          <Info className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+              ))}
             </div>
 
             {/* Translation column */}

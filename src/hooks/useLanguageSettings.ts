@@ -47,6 +47,10 @@ export function useLanguageSettings() {
     removeVoice(languageCode);
   };
 
+  const getClassSettings = (languageCode: string) => {
+    return enrolledClasses.find(cls => cls.languageCode === languageCode);
+  };
+
   return {
     // Settings
     primaryLanguage,
@@ -57,6 +61,7 @@ export function useLanguageSettings() {
     updateClass,
     startNewClass,
     removeClass,
+    getClassSettings,
     
     // Queries
     getCurrentClass,

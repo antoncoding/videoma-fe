@@ -3,48 +3,71 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useVideosStore } from "@/store/videos";
 import { VideoPlayer } from "@/components/video-player";
+import { VocabularyPanel } from "@/components/vocabulary/vocabulary-panel";
 import { useEffect, useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { useLanguageSettings } from '@/hooks/useLanguageSettings';
-import { LANGUAGES } from '@/constants/languages';
+import { TranscriptData } from "@/types/subtitle";
+import { generateLearningSession } from "@/services/vocabulary";
+import { LearningSession } from "@/types/vocabulary";
+import { useHighlightsStore } from "@/store/highlights";
+import { AlertCircle } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useSidebar } from "@/contexts/sidebar-context";
 
-interface TranscriptResponse {
+interface VideoTranscriptResponse {
   status: string;
-  transcription: {
-    source: string;
-    data: Array<{ text: string; start: number; duration: number }>;
-  };
-  translation?: {
-    source: string;
-    data: Array<{ text: string; start: number; duration: number }>;
-  };
+  transcription: TranscriptData;
+  translation?: TranscriptData;
 }
 
 export default function VideoPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const startTime = searchParams.get('t'); // Get timestamp from URL
-  const { videos, updateVideoTitle } = useVideosStore();
+  const startTime = searchParams.get('t');
+  const { videos } = useVideosStore();
   const { getAssistingLanguage } = useLanguageSettings();
   const video = videos.find((v) => v.id === params.id);
   
-  const [transcriptData, setTranscriptData] = useState<TranscriptResponse | null>(null);
+  const [transcriptData, setTranscriptData] = useState<VideoTranscriptResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [initialTime, setInitialTime] = useState(startTime ? parseInt(startTime) : 0);
+  const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
+  const [learningSession, setLearningSession] = useState<LearningSession | null>(null);
 
-  useEffect(() => {
-    if (video?.customTitle) {
-      setNewTitle(video.customTitle);
+  const { data: userSession } = useSession();
+
+  const { getClassSettings } = useLanguageSettings();
+
+  const { showRightSidebar } = useSidebar();
+
+  const handleGenerateLesson = async () => {
+    if (!video || !userSession || !userSession.accessToken) return;
+
+    const classSettings = getClassSettings(video.language);
+    
+    setIsGeneratingLesson(true);
+    try {
+      const highlights = useHighlightsStore.getState().getHighlightsForVideo(video.id);
+      const session = await generateLearningSession({
+        highlights,
+        videoContext: {
+          id: video.id,
+          title: video.customTitle,
+          language: video.language,
+          transcript: transcriptData?.transcription.data.map(s => s.text).join(' ') || '',
+        },
+        userLevel: classSettings?.level || 'beginner',
+      }, userSession?.accessToken);
+      setLearningSession(session);
+    } catch (error) {
+      console.error('Failed to generate lesson:', error);
+    } finally {
+      setIsGeneratingLesson(false);
     }
-  }, [video]);
+  };
 
   useEffect(() => {
     if (!video) return;
@@ -75,28 +98,21 @@ export default function VideoPage() {
         setError(error instanceof Error ? error.message : "Failed to load video");
       } finally {
         setLoading(false);
-        setIsInitialLoad(false);
       }
     };
 
     fetchTranscript();
   }, [video]);
 
-  const handleTitleUpdate = () => {
-    if (video && newTitle.trim()) {
-      updateVideoTitle(video.id, newTitle.trim());
-      setIsEditing(false);
-    }
-  };
-
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleTitleUpdate();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setNewTitle(video?.customTitle || "");
-    }
-  };
+  // Show vocabulary panel in right sidebar on mount
+  useEffect(() => {
+    showRightSidebar(
+      <VocabularyPanel 
+        videoId={video?.id || ''}
+        onGenerateSession={handleGenerateLesson}
+      />
+    );
+  }, [video?.id]);
 
   if (!video) {
     return (
@@ -115,113 +131,17 @@ export default function VideoPage() {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        {isEditing ? (
-          <div className="flex items-center gap-2 flex-1">
-            <Input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={handleTitleKeyDown}
-              className="text-2xl font-bold"
-              autoFocus
-              placeholder="Enter video title"
-            />
-            <Button
-              onClick={handleTitleUpdate}
-              disabled={!newTitle.trim()}
-            >
-              Save
-            </Button>
-            <Button variant="ghost" onClick={() => {
-              setIsEditing(false);
-              setNewTitle(video?.customTitle || "");
-            }}>
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{video.customTitle}</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsEditing(true)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="space-y-8">
-          <VideoPlayer
-            videoId={video.id}
-            videoUrl={video.url}
-            transcript={{ source: "loading", data: [] }}
-            audioLanguage={video.language}
-            isLoading={true}
-          />
-          <div className="animate-pulse space-y-4">
-            <div className="h-10 bg-muted rounded w-full" />
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{LANGUAGES[video.language].flag}</span>
-                  <div className="h-4 bg-muted rounded w-24" />
-                </div>
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 bg-muted rounded" />
-                ))}
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-lg">{LANGUAGES[getAssistingLanguage(video.language)].flag}</span>
-                  <div className="h-4 bg-muted rounded w-24" />
-                </div>
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 bg-muted rounded" />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : error ? (
-        <div className="space-y-8">
-          <VideoPlayer
-            videoId={video.id}
-            videoUrl={video.url}
-            transcript={{ source: "error", data: [] }}
-            audioLanguage={video.language}
-            isLoading={false}
-          />
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      ) : !transcriptData ? (
-        <div className="space-y-8">
-          <VideoPlayer
-            videoId={video.id}
-            videoUrl={video.url}
-            transcript={{ source: "error", data: [] }}
-            audioLanguage={video.language}
-            isLoading={false}
-          />
-          <div>No transcript data available</div>
-        </div>
-      ) : (
-        <VideoPlayer
-          videoId={video.id}
-          videoUrl={video.url}
-          transcript={transcriptData.transcription}
-          translation={transcriptData.translation}
-          audioLanguage={video.language}
-          isLoading={false}
-          initialTime={initialTime}
-        />
-      )}
+    <div className="max-w-[1200px] mx-auto items-center">
+      <VideoPlayer
+        videoId={video.id}
+        videoUrl={video.url}
+        transcript={transcriptData?.transcription}
+        translation={transcriptData?.translation}
+        audioLanguage={video.language}
+        isLoading={loading}
+        initialTime={startTime ? parseInt(startTime) : 0}
+        error={error}
+      />
     </div>
   );
 } 

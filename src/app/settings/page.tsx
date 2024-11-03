@@ -217,10 +217,6 @@ function AddClassDialog({ onAdd, existingLanguages }: AddClassDialogProps) {
   const handleAdd = () => {
     if (selectedLanguage && selectedLevel && selectedVoice) {
       onAdd(selectedLanguage, selectedLevel, selectedVoice);
-      toast({
-        title: "✨ New class added",
-        description: `Started learning ${LANGUAGES[selectedLanguage].label}!`,
-      });
       setIsOpen(false);
       setSelectedLanguage(null);
       setSelectedLevel("beginner");
@@ -380,6 +376,18 @@ export default function SettingsPage() {
     });
   };
 
+  const handleAddClass = (
+    languageCode: string,
+    level: LevelValue,
+    voiceId: string
+  ) => {
+    startNewClass(languageCode, level, voiceId, primaryLanguage);
+    toast({
+      title: "✨ New class added",
+      description: `Started learning ${LANGUAGES[languageCode].label}!`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -452,7 +460,7 @@ export default function SettingsPage() {
           ))}
 
           <AddClassDialog 
-            onAdd={handleUpdateClass}
+            onAdd={handleAddClass}
             existingLanguages={enrolledClasses.map(cls => cls.languageCode)}
           />
         </div>
