@@ -25,6 +25,7 @@ interface VideoPlayerProps {
   isLoading?: boolean;
   initialTime?: number;
   error?: string | null;
+  loadMoreTranslationsIfNeeded: (currentTimestamp: number) => Promise<void>;
 }
 
 interface HighlightState {
@@ -42,6 +43,7 @@ export function VideoPlayer({
   isLoading = false,
   initialTime = 0,
   error,
+  loadMoreTranslationsIfNeeded,
 }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null);
   const originalTranscriptRef = useRef<HTMLDivElement>(null);
@@ -107,6 +109,8 @@ export function VideoPlayer({
 
   const handleProgress = ({ playedSeconds }: { playedSeconds: number }) => {
     setCurrentTime(playedSeconds);
+    // Check if we need to load more translations
+    loadMoreTranslationsIfNeeded?.(playedSeconds);
   };
 
   const handleSubtitleClick = (startTime: number) => {

@@ -41,7 +41,7 @@ export default function VideoPage() {
   const highlights = video ? getHighlightsForVideo(video.id) : [];
   const { data: userSession } = useSession();
 
-  const { transcript, translation, error, loading } = useVideoTranscript(
+  const { transcript, translation, error, loading, loadMoreTranslationsIfNeeded } = useVideoTranscript(
     video?.url || '',
     video?.language || 'es',
     getClassSettings(video?.language || 'es')?.assistingLanguage || 'en'
@@ -152,6 +152,7 @@ export default function VideoPage() {
                 isLoading={loading}
                 initialTime={startTime ? parseInt(startTime) : 0}
                 error={error}
+                loadMoreTranslationsIfNeeded={loadMoreTranslationsIfNeeded}
               />
             </motion.div>
           ) : learningStep === 'learning' && learningSession ? (
