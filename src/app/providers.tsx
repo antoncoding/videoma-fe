@@ -2,20 +2,21 @@
 
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
-import { SessionHandler } from "@/components/session-handler";
+import { MainLayout } from "@/components/layout/main-layout";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <SessionHandler>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-        >
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <MainLayout>
           {children}
-        </ThemeProvider>
-      </SessionHandler>
+        </MainLayout>
+      </ThemeProvider>
     </SessionProvider>
   );
 } 
