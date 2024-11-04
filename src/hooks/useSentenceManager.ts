@@ -1,54 +1,30 @@
 import { useToast } from "@/components/ui/use-toast";
 import { useSession } from "next-auth/react";
-import { VocabularyWord, SentenceAnalysis } from "@/types/vocabulary";
-import { useVideosStore } from "@/store/videos";
-
-interface SaveVocabParams {
-  videoId: string;
-  vocabulary: VocabularyWord;
-}
-
-interface SaveSentenceParams {
-  videoId: string;
-  sentence: SentenceAnalysis;
-}
+import { SavedItemsService } from "@/services/saved-items";
+import { SentenceAnalysis, VocabularyWord } from "@/types/vocabulary";
 
 export function useSentenceManager() {
   const { data: session } = useSession();
   const { toast } = useToast();
-  const { videos } = useVideosStore();
 
-  const saveVocabulary = async ({ videoId, vocabulary }: SaveVocabParams) => {
+  const saveVocabulary = async (videoId: string, vocabulary: VocabularyWord) => {
+    if (!session?.accessToken) return false;
+    
     try {
-      const video = videos.find(v => v.id === videoId);
-      if (!video) throw new Error('Video not found');
+      const success = await SavedItemsService.saveVocabulary(
+        session.accessToken,
+        videoId,
+        vocabulary
+      );
 
-      const response = await fetch('http://localhost:5000/api/vocabulary', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
-        },
-        body: JSON.stringify({
-          video_id: videoId,
-          vocabulary: {
-            word: vocabulary.word,
-            translation: vocabulary.translation,
-            pronunciation: vocabulary.pronunciation,
-            partOfSpeech: vocabulary.partOfSpeech,
-            examples: vocabulary.examples
-          }
-        }),
-      });
+      if (success) {
+        toast({
+          title: "✨ Word saved!",
+          description: "Added to your collection for review later.",
+        });
+      }
 
-      if (!response.ok) throw new Error('Failed to save vocabulary');
-
-      toast({
-        title: "✨ Word saved!",
-        description: "Added to your collection for review later.",
-      });
-
-      return true;
+      return success;
     } catch (error) {
       toast({
         variant: "destructive",
@@ -59,40 +35,24 @@ export function useSentenceManager() {
     }
   };
 
-  const saveSentence = async ({ videoId, sentence }: SaveSentenceParams) => {
+  const saveSentence = async (videoId: string, sentence: SentenceAnalysis) => {
+    if (!session?.accessToken) return false;
+    
     try {
-      const video = videos.find(v => v.id === videoId);
-      if (!video) throw new Error('Video not found');
+      const success = await SavedItemsService.saveSentence(
+        session.accessToken,
+        videoId,
+        sentence
+      );
 
-      console.log('sentence', sentence);
+      if (success) {
+        toast({
+          title: "✨ Sentence saved!",
+          description: "Added to your collection for review later.",
+        });
+      }
 
-      const response = await fetch('http://localhost:5000/api/sentences', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
-        },
-        body: JSON.stringify({
-          video_id: videoId,
-          sentence: {
-            original: sentence.original,
-            translation: sentence.translation,
-            breakdown: sentence.breakdown,
-            grammar: sentence.grammar,
-            context: sentence.context,
-            similarExamples: sentence.similarExamples
-          }
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to save sentence');
-
-      toast({
-        title: "✨ Sentence saved!",
-        description: "Added to your collection for review later.",
-      });
-
-      return true;
+      return success;
     } catch (error) {
       toast({
         variant: "destructive",
@@ -104,22 +64,22 @@ export function useSentenceManager() {
   };
 
   const deleteVocabulary = async (vocabId: number) => {
+    if (!session?.accessToken) return false;
+    
     try {
-      const response = await fetch(`http://localhost:5000/api/vocabulary/${vocabId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
-        },
-      });
+      const success = await SavedItemsService.deleteVocabulary(
+        session.accessToken,
+        vocabId
+      );
 
-      if (!response.ok) throw new Error('Failed to delete vocabulary');
+      if (success) {
+        toast({
+          title: "🗑️ Word deleted",
+          description: "Successfully removed from your collection.",
+        });
+      }
 
-      toast({
-        title: "🗑️ Word deleted",
-        description: "Successfully removed from your collection.",
-      });
-
-      return true;
+      return success;
     } catch (error) {
       toast({
         variant: "destructive",
@@ -131,22 +91,22 @@ export function useSentenceManager() {
   };
 
   const deleteSentence = async (sentenceId: number) => {
+    if (!session?.accessToken) return false;
+    
     try {
-      const response = await fetch(`http://localhost:5000/api/sentences/${sentenceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
-        },
-      });
+      const success = await SavedItemsService.deleteSentence(
+        session.accessToken,
+        sentenceId
+      );
 
-      if (!response.ok) throw new Error('Failed to delete sentence');
+      if (success) {
+        toast({
+          title: "🗑️ Sentence deleted",
+          description: "Successfully removed from your collection.",
+        });
+      }
 
-      toast({
-        title: "🗑️ Sentence deleted",
-        description: "Successfully removed from your collection.",
-      });
-
-      return true;
+      return success;
     } catch (error) {
       toast({
         variant: "destructive",

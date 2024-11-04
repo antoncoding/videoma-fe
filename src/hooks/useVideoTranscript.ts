@@ -113,8 +113,6 @@ export function useVideoTranscript(videoUrl: string, audioLanguage: string, targ
       );
       const statusData: TranslationStatusResponse = await statusResponse.json();
 
-      console.log('statusData', statusData);
-
       if (statusData.status === 'success') {
         const completedPages = new Set(statusData.translated_pages.map(p => p.page));
         const pagesToFetch = Array.from(

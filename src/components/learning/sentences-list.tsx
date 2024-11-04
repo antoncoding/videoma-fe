@@ -75,7 +75,7 @@ export function SentencesList({
       }
     } else {
       // If not saved, save it
-      const success = await saveSentence({ videoId, sentence });
+      const success = await saveSentence(videoId, sentence);
       if (success) {
         // Refetch to get the new ID
         const response = await fetch(`http://localhost:5000/api/sentences?video_id=${videoId}`, {

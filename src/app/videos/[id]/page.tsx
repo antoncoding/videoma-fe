@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useLanguageSettings } from '@/hooks/useLanguageSettings';
-import { generateLearningSession } from "@/services/vocabulary";
+import { generateLearningSession } from "@/services/learning";
 import { LearningSession as LearningSessionType } from "@/types/vocabulary";
 import { useHighlightsStore } from "@/store/highlights";
 import { motion, AnimatePresence } from "framer-motion";

@@ -64,6 +64,8 @@ export function VocabularyList({
   }, [session?.accessToken]);
 
   const handleBookmark = async (word: VocabularyWord) => {
+    if (!session?.accessToken) return;
+
     if (savedVocabs[word.word]) {
       // If already saved, delete it
       const success = await deleteVocabulary(savedVocabs[word.word]);
@@ -76,7 +78,7 @@ export function VocabularyList({
       }
     } else {
       // If not saved, save it
-      const success = await saveVocabulary({ videoId, vocabulary: word });
+      const success = await saveVocabulary(videoId, word);
       if (success) {
         // Refetch to get the new ID
         const response = await fetch("http://localhost:5000/api/vocabulary", {
