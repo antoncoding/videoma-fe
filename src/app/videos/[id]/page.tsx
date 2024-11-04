@@ -43,7 +43,7 @@ export default function VideoPage() {
   const highlights = video ? getHighlightsForVideo(video.id) : [];
   const { data: userSession } = useSession();
 
-  const { data: transcriptData, error, loading } = useVideoTranscript(
+  const { transcript, translation, error, loading } = useVideoTranscript(
     video?.url || '',
     video?.language || 'es',
     getClassSettings(video?.language || 'es')?.assistingLanguage || 'en'
@@ -52,7 +52,7 @@ export default function VideoPage() {
   const { getVoiceSettings } = useLanguageSettings();
 
   const handleGenerateLesson = async () => {
-    if (!video || !transcriptData || !userSession?.accessToken) return;
+    if (!video || !transcript || !userSession?.accessToken) return;
     
     const voiceSettings = getVoiceSettings(video.language);
     const voiceProfile = VOICE_PROFILES[video.language]?.find(
@@ -68,7 +68,7 @@ export default function VideoPage() {
           id: video.id,
           title: video.customTitle,
           language: video.language,
-          transcript: transcriptData.transcription.data.map((s: any) => s.text).join(' '),
+          transcript: transcript.data.map((s: any) => s.text).join(' '),
         },
         userLevel: getClassSettings(video.language)?.level || 'intermediate',
         tone: voiceProfile?.personality || 'A friendly and helpful teacher',
@@ -148,8 +148,8 @@ export default function VideoPage() {
               <VideoPlayer
                 videoId={video.id}
                 videoUrl={video.url}
-                transcript={transcriptData?.transcription}
-                translation={transcriptData?.translation}
+                transcript={transcript}
+                translation={translation}
                 audioLanguage={video.language}
                 isLoading={loading}
                 initialTime={startTime ? parseInt(startTime) : 0}

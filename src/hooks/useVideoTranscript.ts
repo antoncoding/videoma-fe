@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { TranscriptData } from '@/types/subtitle';
 
 interface TranscriptItem {
   text: string;
@@ -30,17 +31,27 @@ interface TranscriptResponse {
   };
 }
 
-interface TranslationStatus {
-  status: 'pending' | 'completed' | 'error';
-  progress: number;
+interface TranslationStatusResponse {
+  status: 'success' | 'error';
+  translated_pages: Array<{
+    created_at: string;
+    page: number;
+  }>;
 }
 
 export function useVideoTranscript(videoUrl: string, audioLanguage: string, targetLanguage?: string) {
-  const [data, setData] = useState<TranscriptResponse | null>(null);
+  const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null);
+  const [translationData, setTranslationData] = useState<TranscriptData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [translationPages, setTranslationPages] = useState<Record<number, TranscriptItem[]>>({});
   const [isLoadingTranslation, setIsLoadingTranslation] = useState(false);
+
+  // Transform API response to VideoPlayer format
+  const transformToTranscriptData = (
+    data: TranscriptResponse['transcription']): TranscriptData => ({
+    source: data.source,
+    data: data.data,
+  });
 
   // Initial transcript fetch
   useEffect(() => {
@@ -65,13 +76,17 @@ export function useVideoTranscript(videoUrl: string, audioLanguage: string, targ
           return;
         }
 
-        setData(result);
-
-        console.log('result.translation', result.translation);
-        // If we have translation, start background loading of remaining pages
-        if (result.translation?.pagination.total_pages > 1) {
-          console.log('result.translation.pagination', result.translation.pagination);
-          loadRemainingTranslations(result.translation.pagination);
+        // Transform and set transcript data
+        setTranscriptData(transformToTranscriptData(result.transcription));
+        
+        // Set initial translation data if available
+        if (result.translation) {
+          setTranslationData(transformToTranscriptData(result.translation));
+          
+          // If we have more pages, start loading them
+          if (result.translation.pagination.total_pages > 1) {
+            loadRemainingTranslations(result.translation.pagination);
+          }
         }
       } catch (err) {
         setError('Failed to fetch transcript');
@@ -86,83 +101,60 @@ export function useVideoTranscript(videoUrl: string, audioLanguage: string, targ
     }
   }, [videoUrl, audioLanguage, targetLanguage]);
 
-  // Function to load remaining translation pages
   const loadRemainingTranslations = async (pagination: PaginationInfo) => {
     if (!targetLanguage || !videoUrl) return;
 
     setIsLoadingTranslation(true);
     const videoId = extractVideoId(videoUrl);
 
-    console.log('')
-
     try {
-      // First check translation status
       const statusResponse = await fetch(
         `http://localhost:5000/api/translate/status?video_id=${videoId}&source_language=${audioLanguage}&target_language=${targetLanguage}`
       );
-      const statusData: TranslationStatus = await statusResponse.json();
+      const statusData: TranslationStatusResponse = await statusResponse.json();
 
-      if (statusData.status === 'completed') {
-        // Load all remaining pages
-        const pagePromises = Array.from(
+      console.log('statusData', statusData);
+
+      if (statusData.status === 'success') {
+        const completedPages = new Set(statusData.translated_pages.map(p => p.page));
+        const pagesToFetch = Array.from(
           { length: pagination.total_pages }, 
           (_, i) => i + 1
-        )
-          .filter(page => page > 1) // Skip first page as we already have it
-          .map(async (page) => {
-            const response = await fetch('http://localhost:5000/api/translate', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                video_id: videoId,
-                target_language: targetLanguage,
-                page
-              }),
-            });
+        ).filter(page => page > 1 && !completedPages.has(page));
 
-            if (!response.ok) throw new Error(`Failed to fetch page ${page}`);
-            
-            const pageData = await response.json();
-            return { 
-              page, 
-              data: pageData.data,
-              pagination: pageData.pagination 
-            };
+        // Load all completed pages
+        const pagePromises = pagesToFetch.map(async (page) => {
+          const response = await fetch('http://localhost:5000/api/translate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              video_id: videoId,
+              target_language: targetLanguage,
+              page
+            }),
           });
+
+          if (!response.ok) throw new Error(`Failed to fetch page ${page}`);
+          return response.json();
+        });
 
         // Load pages in parallel but process them in order
         const pages = await Promise.all(pagePromises);
         
-        setTranslationPages(prev => {
-          const newPages = { ...prev };
-          pages.forEach(({ page, data }) => {
-            newPages[page] = data;
-          });
-          return newPages;
-        });
-
-        // Update the main data with all translation pages
-        setData(prev => {
-          if (!prev?.translation) return prev;
+        // Combine all translation data and update state
+        setTranslationData(prev => {
+          if (!prev) return prev;
 
           const allTranslations = [
-            ...prev.translation.data,
-            ...Object.values(translationPages).flat()
-          ].sort((a, b) => a.start - b.start); // Ensure correct ordering
+            ...prev.data,
+            ...pages.flatMap(page => page.translation.data)
+          ].sort((a, b) => a.start - b.start);
 
           return {
-            ...prev,
-            translation: {
-              ...prev.translation,
-              data: allTranslations,
-              pagination: {
-                ...prev.translation.pagination,
-                current_page: prev.translation.pagination.total_pages,
-                current_segment_end: allTranslations.length,
-              }
-            }
+            source: prev.source,
+            data: allTranslations,
           };
         });
       }
@@ -174,7 +166,8 @@ export function useVideoTranscript(videoUrl: string, audioLanguage: string, targ
   };
 
   return { 
-    data, 
+    transcript: transcriptData,
+    translation: translationData,
     error, 
     loading: loading || isLoadingTranslation,
     isLoadingTranslation 
