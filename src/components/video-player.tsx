@@ -66,8 +66,6 @@ export function VideoPlayer({
 
   const assistingLanguage = getAssistingLanguage(audioLanguage);
 
-  const { handleSaveSentence, isLoading: isSaving } = useSentenceManager();
-
   const getCurrentSubtitle = (subtitles?: Subtitle[]) => {
     if (!subtitles || !Array.isArray(subtitles)) return null;
 
@@ -121,37 +119,6 @@ export function VideoPlayer({
         setIsPlaying(true);
       }
     }
-  };
-
-  const onSaveSentence = async (
-    original: Subtitle,
-  ) => {
-
-    if (!transcript) return;
-
-    // find corresponding translation
-    const translationSubtitle = translation?.data.find(
-      (item) => item.start === original.start
-    );
-
-    await handleSaveSentence({
-      original,
-      translation: translationSubtitle,
-      videoUrl,
-      videoId,
-      timestamp: original.start,
-      audioLanguage,
-      targetLanguage: assistingLanguage,
-      source: transcript.source,
-    });
-  };
-
-  const handleShowDetails = (
-    original: Subtitle,
-    translation?: Subtitle
-  ) => {
-    // We'll implement this later
-    console.log("Show details for:", original, translation);
   };
 
   const handleTextSelection = (

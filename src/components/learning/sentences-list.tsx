@@ -1,19 +1,22 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Volume2 } from "lucide-react";
+import { CheckCircle, Volume2, BookmarkIcon } from "lucide-react";
 import { SentenceAnalysis } from "@/types/vocabulary";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLearningProgress } from "@/store/learning-progress";
+import { useSentenceManager } from "@/hooks/useSentenceManager";
+import { useSession } from "next-auth/react";
 
 interface SentencesListProps {
   sentences: SentenceAnalysis[];
   language: string;
   onToggleComplete: (index: number) => void;
   sessionId: string;
+  videoId: string;
 }
 
 export function SentencesList({ 
@@ -21,10 +24,50 @@ export function SentencesList({
   language,
   onToggleComplete,
   sessionId,
+  videoId,
 }: SentencesListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedSentences, setExpandedSentences] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
+  const { saveSentence } = useSentenceManager();
+  const [bookmarkedSentences, setBookmarkedSentences] = useState<Set<string>>(new Set());
+  const { data: session } = useSession();
+
+  // Fetch bookmarked status on mount
+  useEffect(() => {
+    const fetchBookmarkedStatus = async () => {
+      if (!session?.accessToken) return;
+      
+      try {
+        const response = await fetch("http://localhost:5000/api/sentences", {
+          headers: {
+            "Authorization": `Bearer ${session.accessToken}`,
+          },
+        });
+        
+        if (!response.ok) return;
+        
+        const savedSentences = await response.json();
+        const bookmarkedSet = new Set(savedSentences.map((s: any) => s.original) as string[]);
+        setBookmarkedSentences(bookmarkedSet);
+      } catch (error) {
+        console.error("Failed to fetch bookmarked status:", error);
+      }
+    };
+
+    fetchBookmarkedStatus();
+  }, [session?.accessToken]);
+
+  const handleBookmark = async (sentence: SentenceAnalysis) => {
+    const success = await saveSentence({ videoId, sentence });
+    if (success) {
+      setBookmarkedSentences(prev => {
+        const newSet = new Set(prev);
+        newSet.add(sentence.original);
+        return newSet;
+      });
+    }
+  };
 
   const toggleExpanded = (sentenceId: string) => {
     const newExpanded = new Set(expandedSentences);
@@ -58,6 +101,7 @@ export function SentencesList({
         const isCompleted = isItemCompleted(sessionId, itemId);
         const mainSentenceId = itemId.hashCode();
         const isExpanded = expandedSentences.has(itemId);
+        const isBookmarked = bookmarkedSentences.has(sentence.original);
 
         const audioId = `${itemId}-${sentence.original}`.hashCode();
         
@@ -98,20 +142,36 @@ export function SentencesList({
                     </div>
                     <p className="text-sm text-muted-foreground">{sentence.translation}</p>
                   </div>
-                  <Button
-                    variant={"outline"}
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleComplete(index, !isCompleted);
-                    }}
-                  >
-                    <CheckCircle className={cn(
-                      "h-4 w-4 mr-1",
-                      isCompleted && "text-green-500"
-                    )} />
-                    {isCompleted ? "Learned" : "Mark Learned"}
-                  </Button>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBookmark(sentence);
+                      }}
+                    >
+                      <BookmarkIcon className={cn(
+                        "h-4 w-4",
+                        isBookmarked && "fill-current"
+                      )} />
+                    </Button>
+                    <Button
+                      variant={"outline"}
+                      size="sm"
+                      className="w-[120px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleComplete(index, !isCompleted);
+                      }}
+                    >
+                      <CheckCircle className={cn(
+                        "h-4 w-4 mr-1",
+                        isCompleted && "text-green-500"
+                      )} />
+                      {isCompleted ? "Learned" : "Mark Learned"}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Expandable content */}

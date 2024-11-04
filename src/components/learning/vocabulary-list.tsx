@@ -1,19 +1,22 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Volume2 } from "lucide-react";
+import { CheckCircle, Volume2, BookmarkIcon } from "lucide-react";
 import { VocabularyWord } from "@/types/vocabulary";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayback } from "@/hooks/useAudioPlayback";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLearningProgress } from "@/store/learning-progress";
+import { useSentenceManager } from "@/hooks/useSentenceManager";
+import { useSession } from "next-auth/react";
 
 interface VocabularyListProps {
   words: VocabularyWord[];
   language: string;
   onToggleComplete: (index: number) => void;
   sessionId: string;
+  videoId: string;
 }
 
 export function VocabularyList({ 
@@ -21,10 +24,50 @@ export function VocabularyList({
   language, 
   onToggleComplete,
   sessionId,
+  videoId,
 }: VocabularyListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
+  const { saveVocabulary } = useSentenceManager();
+  const [bookmarkedWords, setBookmarkedWords] = useState<Set<string>>(new Set());
+  const { data: session } = useSession();
+
+  // Fetch bookmarked status on mount
+  useEffect(() => {
+    const fetchBookmarkedStatus = async () => {
+      if (!session?.accessToken) return;
+      
+      try {
+        const response = await fetch("http://localhost:5000/api/vocabulary", {
+          headers: {
+            "Authorization": `Bearer ${session.accessToken}`,
+          },
+        });
+        
+        if (!response.ok) return;
+        
+        const savedWords = await response.json();
+        const bookmarkedSet = new Set(savedWords.map((w: any) => w.word) as string[]);
+        setBookmarkedWords(bookmarkedSet);
+      } catch (error) {
+        console.error("Failed to fetch bookmarked status:", error);
+      }
+    };
+
+    fetchBookmarkedStatus();
+  }, [session?.accessToken]);
+
+  const handleBookmark = async (word: VocabularyWord) => {
+    const success = await saveVocabulary({ videoId, vocabulary: word });
+    if (success) {
+      setBookmarkedWords(prev => {
+        const newSet = new Set(prev);
+        newSet.add(word.word);
+        return newSet;
+      });
+    }
+  };
 
   const toggleExpanded = (itemId: string) => {
     setExpandedWords(prev => {
@@ -54,6 +97,7 @@ export function VocabularyList({
         // need a more complex id to make sure it's unique, don't mess up with cache
         const audioId = `${itemId}-${word.word}`.hashCode();
         const isExpanded = expandedWords.has(itemId);
+        const isBookmarked = bookmarkedWords.has(word.word);
 
         return (
           <motion.div
@@ -96,17 +140,33 @@ export function VocabularyList({
                       {word.translation}
                     </p>
                   </div>
-                  <Button
-                    variant={"outline"}
-                    size="sm"
-                    onClick={(e) => handleToggleComplete(index, e)}
-                  >
-                    <CheckCircle className={cn(
-                      "h-4 w-4 mr-1",
-                      isCompleted && "text-green-500"
-                    )} />
-                    {isCompleted ? "Learned" : "Mark Learned"}
-                  </Button>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBookmark(word);
+                      }}
+                    >
+                      <BookmarkIcon className={cn(
+                        "h-4 w-4",
+                        isBookmarked && "fill-current"
+                      )} />
+                    </Button>
+                    <Button
+                      variant={"outline"}
+                      size="sm"
+                      className="w-[120px]"
+                      onClick={(e) => handleToggleComplete(index, e)}
+                    >
+                      <CheckCircle className={cn(
+                        "h-4 w-4 mr-1",
+                        isCompleted && "text-green-500"
+                      )} />
+                      {isCompleted ? "Learned" : "Mark Learned"}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Expandable content */}

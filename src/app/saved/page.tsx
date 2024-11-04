@@ -4,28 +4,29 @@ import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSentenceManager } from "@/hooks/useSentenceManager";
-import { SentenceCard } from "@/components/saved/sentence-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { VocabularyWord, SentenceAnalysis } from "@/types/vocabulary";
+import { VocabularyList } from "@/components/learning/vocabulary-list";
+import { SentencesList } from "@/components/learning/sentences-list";
 
-interface SavedSentence {
+interface SavedVocabulary extends VocabularyWord {
   id: number;
-  video_url: string;
-  video_title: string;
-  original_text: string;
-  translated_text: string | null;
-  timestamp: number;
-  original_language: string;
-  target_language: string;
+  video_id: string;
   created_at: string;
-  source: string;
-  translation_source: string;
+}
+
+interface SavedSentence extends SentenceAnalysis {
+  id: number;
+  video_id: string;
+  created_at: string;
 }
 
 export default function SavedPage() {
+  const [vocabularies, setVocabularies] = useState<SavedVocabulary[]>([]);
   const [sentences, setSentences] = useState<SavedSentence[]>([]);
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { handleDeleteSentence } = useSentenceManager();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -35,39 +36,45 @@ export default function SavedPage() {
 
   useEffect(() => {
     if (session?.accessToken) {
-      fetchSentences();
+      fetchSavedItems();
     }
   }, [session?.accessToken]);
 
-  const fetchSentences = async () => {
+  const fetchSavedItems = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/sentences", {
+      // Fetch vocabularies
+      const vocabResponse = await fetch("http://localhost:5000/api/vocabulary", {
         headers: {
           "Authorization": `Bearer ${session?.accessToken}`,
         },
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
+      // Fetch sentences
+      const sentenceResponse = await fetch("http://localhost:5000/api/sentences", {
+        headers: {
+          "Authorization": `Bearer ${session?.accessToken}`,
+        },
+      });
+
+      if (!vocabResponse.ok || !sentenceResponse.ok) {
+        if (vocabResponse.status === 401 || sentenceResponse.status === 401) {
           signIn("google");
           return;
         }
-        throw new Error('Failed to fetch sentences');
+        throw new Error('Failed to fetch saved items');
       }
 
-      const data = await response.json();
-      setSentences(data);
+      const vocabData = await vocabResponse.json();
+      console.log('vocabData', vocabData);
+      const sentenceData = await sentenceResponse.json();
+      console.log('sentenceData', sentenceData);
+
+      setVocabularies(vocabData.vocabulary);
+      setSentences(sentenceData);
     } catch (error) {
-      console.error("Error fetching saved sentences:", error);
+      console.error("Error fetching saved items:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const onDelete = async (id: number) => {
-    const success = await handleDeleteSentence(id);
-    if (success) {
-      setSentences(sentences.filter(s => s.id !== id));
     }
   };
 
@@ -81,16 +88,38 @@ export default function SavedPage() {
 
   return (
     <div className="container max-w-4xl mx-auto p-8">
-      <h1 className="text-2xl font-montserrat mb-8">Saved Sentences</h1>
-      <div className="space-y-6">
-        {sentences.map((sentence) => (
-          <SentenceCard 
-            key={sentence.id}
-            sentence={sentence}
-            onDelete={onDelete}
+      <h1 className="text-2xl mb-8">Saved Items</h1>
+      
+      <Tabs defaultValue="vocabulary" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="vocabulary">
+            Vocabulary ({vocabularies.length})
+          </TabsTrigger>
+          <TabsTrigger value="sentences">
+            Sentences ({sentences.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="vocabulary" className="space-y-6">
+          <VocabularyList 
+            words={vocabularies}
+            language="es" // You might want to get this from the vocabulary item
+            onToggleComplete={() => {}} // No-op since we don't need completion here
+            sessionId="saved" // Dummy session ID since we don't need progress tracking
+            videoId="saved" // Dummy video ID
           />
-        ))}
-      </div>
+        </TabsContent>
+
+        <TabsContent value="sentences" className="space-y-6">
+          <SentencesList 
+            sentences={sentences}
+            language="es" // You might want to get this from the sentence item
+            onToggleComplete={() => {}} // No-op since we don't need completion here
+            sessionId="saved" // Dummy session ID since we don't need progress tracking
+            videoId="saved" // Dummy video ID
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 

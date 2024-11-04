@@ -123,6 +123,7 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
             language={language}
             onToggleComplete={handleVocabularyProgress}
             sessionId={session.id}
+            videoId={videoId}
           />
         </TabPanel>
 
@@ -133,6 +134,7 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
               language={language}
               onToggleComplete={handleSentenceProgress}
               sessionId={session.id}
+              videoId={videoId}
             />
           </div>
         </TabPanel>

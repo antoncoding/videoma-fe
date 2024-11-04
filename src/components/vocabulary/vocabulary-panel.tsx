@@ -19,29 +19,7 @@ export function VocabularyPanel({ videoId, onGenerateSession, isGenerating }: Vo
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-4">
-        {highlights.length > 0 && (
-          <Button 
-            size="sm" 
-            onClick={onGenerateSession}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <>
-                <span className="animate-spin mr-2">⏳</span>
-                Generating...
-              </>
-            ) : (
-              <>
-                <Book className="w-4 h-4 mr-2" />
-                Generate Lesson
-              </>
-            )}
-          </Button>
-        )}
-      </div>
-
-      <ScrollArea className="flex-1 px-4">
+      <ScrollArea className="flex-1 px-4 pt-8">
         {words.length > 0 && (
           <div className="mb-6">
             <h4 className="text-sm font-medium mb-2">Words</h4>

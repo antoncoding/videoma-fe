@@ -69,9 +69,13 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Choose your answer:</h4>
               <div className="grid grid-cols-1 gap-3">
-                {exercise.options?.map((option) => {
+                {exercise.options?.map((option, index) => {
                   const isSelected = selectedAnswer === option;
-                  const isCorrect = option === exercise.answer;
+
+                  // exact match, or the index corresponding to A, B, C, D
+                  const isCorrect = option.toLowerCase() === exercise.answer.toLowerCase() ||
+                    (exercise.answer.toLowerCase() === String.fromCharCode(65 + index).toLowerCase());
+                  
                   const showResult = selectedAnswer !== null;
 
                   return (
@@ -172,6 +176,9 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
         );
 
       case ExerciseType.FillInBlank:
+
+        console.log('exercise fill', exercise)
+
         return (
           <div className="space-y-6">
             {/* Question Section */}
