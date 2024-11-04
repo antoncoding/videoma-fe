@@ -29,13 +29,13 @@ export function SentencesList({
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedSentences, setExpandedSentences] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
-  const { saveSentence } = useSentenceManager();
-  const [bookmarkedSentences, setBookmarkedSentences] = useState<Set<string>>(new Set());
+  const { saveSentence, deleteSentence } = useSentenceManager();
   const { data: session } = useSession();
+  const [savedSentences, setSavedSentences] = useState<Record<string, number>>({});  // original -> id mapping
 
-  // Fetch bookmarked status on mount
+  // Fetch saved status on mount
   useEffect(() => {
-    const fetchBookmarkedStatus = async () => {
+    const fetchSavedStatus = async () => {
       if (!session?.accessToken) return;
       
       try {
@@ -47,25 +47,53 @@ export function SentencesList({
         
         if (!response.ok) return;
         
-        const savedSentences = await response.json();
-        const bookmarkedSet = new Set(savedSentences.map((s: any) => s.original) as string[]);
-        setBookmarkedSentences(bookmarkedSet);
+        const data = await response.json();
+        // Create a mapping of original text -> id for saved sentences
+        const savedMap = (data.sentences || []).reduce((acc: Record<string, number>, item: any) => {
+          acc[item.original] = item.id;
+          return acc;
+        }, {});
+        setSavedSentences(savedMap);
       } catch (error) {
-        console.error("Failed to fetch bookmarked status:", error);
+        console.error("Failed to fetch saved status:", error);
       }
     };
 
-    fetchBookmarkedStatus();
+    fetchSavedStatus();
   }, [session?.accessToken]);
 
   const handleBookmark = async (sentence: SentenceAnalysis) => {
-    const success = await saveSentence({ videoId, sentence });
-    if (success) {
-      setBookmarkedSentences(prev => {
-        const newSet = new Set(prev);
-        newSet.add(sentence.original);
-        return newSet;
-      });
+    if (savedSentences[sentence.original]) {
+      // If already saved, delete it
+      const success = await deleteSentence(savedSentences[sentence.original]);
+      if (success) {
+        setSavedSentences(prev => {
+          const newMap = { ...prev };
+          delete newMap[sentence.original];
+          return newMap;
+        });
+      }
+    } else {
+      // If not saved, save it
+      const success = await saveSentence({ videoId, sentence });
+      if (success) {
+        // Refetch to get the new ID
+        const response = await fetch(`http://localhost:5000/api/sentences?video_id=${videoId}`, {
+          headers: {
+            "Authorization": `Bearer ${session?.accessToken}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const newItem = data.sentences.find((s: any) => s.original === sentence.original);
+          if (newItem) {
+            setSavedSentences(prev => ({
+              ...prev,
+              [sentence.original]: newItem.id
+            }));
+          }
+        }
+      }
     }
   };
 
@@ -99,10 +127,7 @@ export function SentencesList({
       {sentences.map((sentence, index) => {
         const itemId = `sentence-${index}`;
         const isCompleted = isItemCompleted(sessionId, itemId);
-        const mainSentenceId = itemId.hashCode();
         const isExpanded = expandedSentences.has(itemId);
-        const isBookmarked = bookmarkedSentences.has(sentence.original);
-
         const audioId = `${itemId}-${sentence.original}`.hashCode();
         
         return (
@@ -153,7 +178,7 @@ export function SentencesList({
                     >
                       <BookmarkIcon className={cn(
                         "h-4 w-4",
-                        isBookmarked && "fill-current"
+                        sentence.original in savedSentences && "fill-current"
                       )} />
                     </Button>
                     <Button

@@ -177,8 +177,6 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
 
       case ExerciseType.FillInBlank:
 
-        console.log('exercise fill', exercise)
-
         return (
           <div className="space-y-6">
             {/* Question Section */}
@@ -255,9 +253,7 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
           <div className="space-y-1">
             <h3 className="text-lg font-semibold">Exercise {currentIndex + 1}/{exercises.length}</h3>
             <p className="text-sm text-muted-foreground">
-              {exercise.type === ExerciseType.MultipleChoice ? 'Choose the correct answer' :
-               exercise.type === ExerciseType.TrueFalse ? 'True or False' :
-               'Fill in the blank'}
+              {exercise.type}
             </p>
           </div>
           <div className="flex items-center gap-4">

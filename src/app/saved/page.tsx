@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useSentenceManager } from "@/hooks/useSentenceManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VocabularyWord, SentenceAnalysis } from "@/types/vocabulary";
 import { VocabularyList } from "@/components/learning/vocabulary-list";
 import { SentencesList } from "@/components/learning/sentences-list";
+import { Loader2 } from "lucide-react";
 
 interface SavedVocabulary extends VocabularyWord {
   id: number;
@@ -29,59 +29,69 @@ export default function SavedPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Only redirect if we're certain user is not authenticated
     if (status === "unauthenticated") {
-      router.push("/login");
+      signIn();
     }
-  }, [status, router]);
+  }, [status]);
 
   useEffect(() => {
+    const fetchSavedItems = async () => {
+      if (!session?.accessToken) return;
+
+      try {
+        setLoading(true);
+        // Fetch vocabularies
+        const vocabResponse = await fetch("http://localhost:5000/api/vocabulary", {
+          headers: {
+            "Authorization": `Bearer ${session.accessToken}`,
+          },
+        });
+
+        // Fetch sentences
+        const sentenceResponse = await fetch("http://localhost:5000/api/sentences", {
+          headers: {
+            "Authorization": `Bearer ${session.accessToken}`,
+          },
+        });
+
+        if (!vocabResponse.ok || !sentenceResponse.ok) {
+          if (vocabResponse.status === 401 || sentenceResponse.status === 401) {
+            signIn();
+            return;
+          }
+          throw new Error('Failed to fetch saved items');
+        }
+
+        const vocabData = await vocabResponse.json();
+        const sentenceData = await sentenceResponse.json();
+
+        console.log('sentenceData.sentences', sentenceData.sentences)
+
+        setVocabularies(vocabData.vocabulary || []);
+        setSentences(sentenceData.sentences || []);
+      } catch (error) {
+        console.error("Error fetching saved items:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (session?.accessToken) {
       fetchSavedItems();
     }
   }, [session?.accessToken]);
 
-  const fetchSavedItems = async () => {
-    try {
-      // Fetch vocabularies
-      const vocabResponse = await fetch("http://localhost:5000/api/vocabulary", {
-        headers: {
-          "Authorization": `Bearer ${session?.accessToken}`,
-        },
-      });
-
-      // Fetch sentences
-      const sentenceResponse = await fetch("http://localhost:5000/api/sentences", {
-        headers: {
-          "Authorization": `Bearer ${session?.accessToken}`,
-        },
-      });
-
-      if (!vocabResponse.ok || !sentenceResponse.ok) {
-        if (vocabResponse.status === 401 || sentenceResponse.status === 401) {
-          signIn("google");
-          return;
-        }
-        throw new Error('Failed to fetch saved items');
-      }
-
-      const vocabData = await vocabResponse.json();
-      console.log('vocabData', vocabData);
-      const sentenceData = await sentenceResponse.json();
-      console.log('sentenceData', sentenceData);
-
-      setVocabularies(vocabData.vocabulary);
-      setSentences(sentenceData);
-    } catch (error) {
-      console.error("Error fetching saved items:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (status === "loading") {
-    return <div>Loading...</div>;
+  // Show loading state while checking authentication
+  if (status === "loading" || loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
+  // Don't render anything while redirecting to login
   if (status === "unauthenticated") {
     return null;
   }

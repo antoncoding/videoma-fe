@@ -19,8 +19,8 @@ import { cn } from '@/lib/utils';
 interface VideoPlayerProps {
   videoUrl: string;
   videoId: string;
-  transcript?: TranscriptData;
-  translation?: TranscriptData;
+  transcript: TranscriptData | null;
+  translation: TranscriptData | null;
   audioLanguage?: string;
   isLoading?: boolean;
   initialTime?: number;

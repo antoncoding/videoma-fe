@@ -29,13 +29,14 @@ export function VocabularyList({
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
-  const { saveVocabulary } = useSentenceManager();
+  const { saveVocabulary, deleteVocabulary } = useSentenceManager();
   const [bookmarkedWords, setBookmarkedWords] = useState<Set<string>>(new Set());
   const { data: session } = useSession();
+  const [savedVocabs, setSavedVocabs] = useState<Record<string, number>>({});
 
-  // Fetch bookmarked status on mount
+  // Fetch saved status on mount
   useEffect(() => {
-    const fetchBookmarkedStatus = async () => {
+    const fetchSavedStatus = async () => {
       if (!session?.accessToken) return;
       
       try {
@@ -46,26 +47,54 @@ export function VocabularyList({
         });
         
         if (!response.ok) return;
-        
-        const savedWords = await response.json();
-        const bookmarkedSet = new Set(savedWords.map((w: any) => w.word) as string[]);
-        setBookmarkedWords(bookmarkedSet);
+         
+        const data = await response.json();
+        // Create a mapping of word -> id for saved vocabularies
+        const savedMap = (data.vocabulary || []).reduce((acc: Record<string, number>, item: any) => {
+          acc[item.word] = item.id;
+          return acc;
+        }, {});
+        setSavedVocabs(savedMap);
       } catch (error) {
-        console.error("Failed to fetch bookmarked status:", error);
+        console.error("Failed to fetch saved status:", error);
       }
     };
 
-    fetchBookmarkedStatus();
+    fetchSavedStatus();
   }, [session?.accessToken]);
 
   const handleBookmark = async (word: VocabularyWord) => {
-    const success = await saveVocabulary({ videoId, vocabulary: word });
-    if (success) {
-      setBookmarkedWords(prev => {
-        const newSet = new Set(prev);
-        newSet.add(word.word);
-        return newSet;
-      });
+    if (savedVocabs[word.word]) {
+      // If already saved, delete it
+      const success = await deleteVocabulary(savedVocabs[word.word]);
+      if (success) {
+        setSavedVocabs(prev => {
+          const newMap = { ...prev };
+          delete newMap[word.word];
+          return newMap;
+        });
+      }
+    } else {
+      // If not saved, save it
+      const success = await saveVocabulary({ videoId, vocabulary: word });
+      if (success) {
+        // Refetch to get the new ID
+        const response = await fetch("http://localhost:5000/api/vocabulary", {
+          headers: {
+            "Authorization": `Bearer ${session?.accessToken}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const newItem = data.vocabulary.find((v: any) => v.word === word.word);
+          if (newItem) {
+            setSavedVocabs(prev => ({
+              ...prev,
+              [word.word]: newItem.id
+            }));
+          }
+        }
+      }
     }
   };
 
@@ -151,7 +180,7 @@ export function VocabularyList({
                     >
                       <BookmarkIcon className={cn(
                         "h-4 w-4",
-                        isBookmarked && "fill-current"
+                        word.word in savedVocabs && "fill-current"
                       )} />
                     </Button>
                     <Button
