@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useOnboardingStore } from "@/store/onboarding";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { VideoSearch } from "@/components/dashboard/video-search";
@@ -79,7 +78,7 @@ export default function Dashboard() {
               )}
               onClick={() => handleClassSelect(cls)}
             >
-              <div className="space-y-4">
+              <div className="sm:space-y-4">
                 <div className="flex items-center gap-4">
                   <span className="text-4xl">{language.flag}</span>
                   <div>

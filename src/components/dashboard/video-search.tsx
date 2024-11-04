@@ -91,7 +91,7 @@ export function VideoSearch({ languageCode, level }: VideoSearchProps) {
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               placeholder="Paste YouTube URL here..."
-              className="flex-1 border-0 focus-visible:ring-0 bg-transparent px-0"
+              className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent px-0 focus-visible:border-x-2 focus-visible:border-x-primary"
               disabled={loading}
             />
           </div>
@@ -100,7 +100,12 @@ export function VideoSearch({ languageCode, level }: VideoSearchProps) {
           </Button>
         </form>
 
-        <div className="flex flex-col gap-1">
+        {/* temporary: note that you need a video with captions */}
+        <p className="text-xs px-2 text-muted-foreground">
+          Beta Release: Use a video with {LANGUAGES[languageCode].label} captions enabled!
+        </p>
+
+        <div className="flex flex-col gap-1 pt-4">
           <p className="text-sm text-muted-foreground">
             Learning {LANGUAGES[languageCode].label} at{" "}
             <span className="font-medium">
