@@ -1,4 +1,5 @@
 import { VocabularyHighlight, LearningSession } from '@/types/vocabulary';
+import { API_BASE_URL } from './api';
 
 interface GenerateSessionParams {
   highlights: VocabularyHighlight[];
@@ -25,7 +26,7 @@ export async function generateLearningSession(
 }> {
 
   
-  const response = await fetch('http://localhost:5000/api/lesson/generate', {
+  const response = await fetch(`${API_BASE_URL}/api/lesson/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

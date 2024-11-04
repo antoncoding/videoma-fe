@@ -3,6 +3,7 @@ import { useSession } from 'next-auth/react';
 import { useAudioStore } from '@/store/audio';
 import { toast } from '@/components/ui/use-toast';
 import { useVoiceStore } from '@/store/settings/voice';
+import { API_BASE_URL, API_ROUTES } from '@/services/api';
 
 export function useAudioPlayback() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -19,15 +20,13 @@ export function useAudioPlayback() {
       return;
     }
 
-    console.log('playAudio', text, language, uniqueId);
-
     setAudioLoading(true);
     try {
       const voice = getVoiceForLanguage(language);
       let audioId = uniqueId ? getFromCache(uniqueId) : null;
       
       if (!audioId) {
-        const generateResponse = await fetch("http://localhost:5000/api/audio/generate", {
+        const generateResponse = await fetch(API_ROUTES.AUDIO.GENERATE, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -48,10 +47,10 @@ export function useAudioPlayback() {
         if (uniqueId) {
           addToCache(uniqueId, audio_id);
         }
-        audioId = audio_id;
+        audioId = audio_id as number;
       }
 
-      const audioResponse = await fetch(`http://localhost:5000/api/audio/${audioId}`, {
+      const audioResponse = await fetch(API_ROUTES.AUDIO.GET(audioId.toString()), {
         headers: {
           "Authorization": `Bearer ${session?.accessToken}`,
         },

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLearningProgress } from "@/store/learning-progress";
 import { useSentenceManager } from "@/hooks/useSentenceManager";
 import { useSession } from "next-auth/react";
+import { API_ROUTES } from "@/services/api";
 
 interface VocabularyListProps {
   words: VocabularyWord[];
@@ -40,7 +41,7 @@ export function VocabularyList({
       if (!session?.accessToken) return;
       
       try {
-        const response = await fetch("http://localhost:5000/api/vocabulary", {
+        const response = await fetch(API_ROUTES.VOCABULARY.LIST, {
           headers: {
             "Authorization": `Bearer ${session.accessToken}`,
           },
@@ -81,7 +82,7 @@ export function VocabularyList({
       const success = await saveVocabulary(videoId, word);
       if (success) {
         // Refetch to get the new ID
-        const response = await fetch("http://localhost:5000/api/vocabulary", {
+        const response = await fetch(API_ROUTES.VOCABULARY.LIST, {
           headers: {
             "Authorization": `Bearer ${session?.accessToken}`,
           },

@@ -12,6 +12,7 @@ export const API_ROUTES = {
   },
   SENTENCES: {
     LIST: `${API_BASE_URL}/api/sentences`,
+    SAVE: (videoId: string) => `${API_BASE_URL}/api/sentences?video_id=${videoId}`,
     DELETE: (id: number) => `${API_BASE_URL}/api/sentences/${id}`,
   },
   TRANSCRIPT: {

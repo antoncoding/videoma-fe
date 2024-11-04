@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLearningProgress } from "@/store/learning-progress";
 import { useSentenceManager } from "@/hooks/useSentenceManager";
 import { useSession } from "next-auth/react";
+import { API_ROUTES } from "@/services/api";
 
 interface SentencesListProps {
   sentences: SentenceAnalysis[];
@@ -39,7 +40,7 @@ export function SentencesList({
       if (!session?.accessToken) return;
       
       try {
-        const response = await fetch("http://localhost:5000/api/sentences", {
+        const response = await fetch(API_ROUTES.SENTENCES.LIST, {
           headers: {
             "Authorization": `Bearer ${session.accessToken}`,
           },
@@ -78,7 +79,7 @@ export function SentencesList({
       const success = await saveSentence(videoId, sentence);
       if (success) {
         // Refetch to get the new ID
-        const response = await fetch(`http://localhost:5000/api/sentences?video_id=${videoId}`, {
+        const response = await fetch(API_ROUTES.SENTENCES.SAVE(videoId), {
           headers: {
             "Authorization": `Bearer ${session?.accessToken}`,
           },

@@ -8,6 +8,7 @@ import { VocabularyWord, SentenceAnalysis } from "@/types/vocabulary";
 import { VocabularyList } from "@/components/learning/vocabulary-list";
 import { SentencesList } from "@/components/learning/sentences-list";
 import { Loader2 } from "lucide-react";
+import { API_ROUTES } from "@/services/api";
 
 interface SavedVocabulary extends VocabularyWord {
   id: number;
@@ -42,14 +43,14 @@ export default function SavedPage() {
       try {
         setLoading(true);
         // Fetch vocabularies
-        const vocabResponse = await fetch("http://localhost:5000/api/vocabulary", {
+        const vocabResponse = await fetch(API_ROUTES.VOCABULARY.LIST, {
           headers: {
             "Authorization": `Bearer ${session.accessToken}`,
           },
         });
 
         // Fetch sentences
-        const sentenceResponse = await fetch("http://localhost:5000/api/sentences", {
+        const sentenceResponse = await fetch(API_ROUTES.SENTENCES.LIST, {
           headers: {
             "Authorization": `Bearer ${session.accessToken}`,
           },
