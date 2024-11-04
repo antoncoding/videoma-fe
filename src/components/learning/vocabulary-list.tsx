@@ -26,28 +26,21 @@ export function VocabularyList({
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
 
-  const toggleExpanded = (wordId: string) => {
-    const newExpanded = new Set(expandedWords);
-    if (newExpanded.has(wordId)) {
-      newExpanded.delete(wordId);
-    } else {
-      newExpanded.add(wordId);
-    }
-    setExpandedWords(newExpanded);
+  const toggleExpanded = (itemId: string) => {
+    setExpandedWords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
   };
 
-  const handleToggleComplete = (idx: number, completed: boolean) => {
+  const handleToggleComplete = (idx: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click from triggering
     onToggleComplete(idx);
-    // Automatically expand when unchecking, collapse when checking
-    if (!completed) {
-      setExpandedWords(prev => new Set(prev).add(`word-${idx}`));
-    } else {
-      setExpandedWords(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(`word-${idx}`);
-        return newSet;
-      });
-    }
   };
 
   return (
@@ -57,6 +50,9 @@ export function VocabularyList({
         const itemId = `word-${index}`;
         const isCompleted = isItemCompleted(sessionId, itemId);
         const wordSentenceId = itemId.hashCode();
+        
+        // need a more complex id to make sure it's unique, don't mess up with cache
+        const audioId = `${itemId}-${word.word}`.hashCode();
         const isExpanded = expandedWords.has(itemId);
 
         return (
@@ -71,7 +67,7 @@ export function VocabularyList({
                 isCompleted && "border-green-500/20 bg-green-50/50",
                 "cursor-pointer"
               )}
-              onClick={() => toggleExpanded(word.word)}
+              onClick={() => toggleExpanded(itemId)}
             >
               <div className="space-y-4">
                 {/* Main word section */}
@@ -85,7 +81,7 @@ export function VocabularyList({
                         className="h-6" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          playAudio(word.word, language, wordSentenceId);
+                          playAudio(word.word, language, audioId);
                         }}
                         disabled={audioLoading}
                       >
@@ -103,10 +99,7 @@ export function VocabularyList({
                   <Button
                     variant={"outline"}
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleComplete(index, !isCompleted);
-                    }}
+                    onClick={(e) => handleToggleComplete(index, e)}
                   >
                     <CheckCircle className={cn(
                       "h-4 w-4 mr-1",

@@ -12,19 +12,19 @@ export function useAudioPlayback() {
   const { getVoiceForLanguage } = useVoiceStore();
   const { getFromCache, addToCache } = useAudioStore();
 
-  const playAudio = async (text: string, language: string, sentenceId?: number) => {
+  const playAudio = async (text: string, language: string, uniqueId?: number) => {
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
       return;
     }
 
-    console.log('playAudio', text, language, sentenceId);
+    console.log('playAudio', text, language, uniqueId);
 
     setAudioLoading(true);
     try {
       const voice = getVoiceForLanguage(language);
-      let audioId = sentenceId ? getFromCache(sentenceId) : null;
+      let audioId = uniqueId ? getFromCache(uniqueId) : null;
       
       if (!audioId) {
         const generateResponse = await fetch("http://localhost:5000/api/audio/generate", {
@@ -35,7 +35,7 @@ export function useAudioPlayback() {
           },
           body: JSON.stringify({
             sentence: text,
-            sentence_id: sentenceId,
+            sentence_id: uniqueId,
             voice_id: voice,
           }),
         });
@@ -45,8 +45,8 @@ export function useAudioPlayback() {
         }
 
         const { audio_id } = await generateResponse.json();
-        if (sentenceId) {
-          addToCache(sentenceId, audio_id);
+        if (uniqueId) {
+          addToCache(uniqueId, audio_id);
         }
         audioId = audio_id;
       }
@@ -59,7 +59,7 @@ export function useAudioPlayback() {
 
       if (!audioResponse.ok) {
         if (audioResponse.status === 404) {
-          if (sentenceId) addToCache(sentenceId, 0);
+          if (uniqueId) addToCache(uniqueId, 0);
           throw new Error('Cached audio not found');
         }
         throw new Error('Failed to fetch audio');

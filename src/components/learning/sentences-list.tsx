@@ -58,6 +58,8 @@ export function SentencesList({
         const isCompleted = isItemCompleted(sessionId, itemId);
         const mainSentenceId = itemId.hashCode();
         const isExpanded = expandedSentences.has(itemId);
+
+        const audioId = `${itemId}-${sentence.original}`.hashCode();
         
         return (
           <motion.div
@@ -84,7 +86,7 @@ export function SentencesList({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          playAudio(sentence.original, language, mainSentenceId);
+                          playAudio(sentence.original, language, audioId);
                         }}
                         disabled={audioLoading}
                       >
