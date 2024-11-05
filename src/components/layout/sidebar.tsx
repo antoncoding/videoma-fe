@@ -24,6 +24,7 @@ import { useSession, signOut, signIn } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { useSidebar } from "@/contexts/sidebar-context";
 
 interface NavItem {
   title: string;
@@ -59,6 +60,8 @@ export function Sidebar() {
   const { data: session, status } = useSession();
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+
+  const { isLeftSidebarVisible, setLeftSidebarVisible } = useSidebar();
 
   const toggleExpand = (title: string) => {
     setExpandedItems(prev => 
@@ -97,8 +100,7 @@ export function Sidebar() {
         "fixed left-0 top-0 z-40 h-screen border-r bg-background transition-all duration-300",
         isCollapsed ? "w-16" : "w-64",
         "md:translate-x-0",
-        isCollapsed ? "-translate-x-16" : "-translate-x-64",
-        "md:translate-x-0"
+        isLeftSidebarVisible ? "translate-x-0" : "-translate-x-full",
       )}
     >
       <div className="flex h-14 items-center border-b px-4">
@@ -293,10 +295,10 @@ export function Sidebar() {
         </div>
       </div>
 
-      {!isCollapsed && (
+      {isLeftSidebarVisible && (
         <div 
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[-1] md:hidden"
-          onClick={() => setIsCollapsed(true)}
+          onClick={() => setLeftSidebarVisible(false)}
         />
       )}
     </div>

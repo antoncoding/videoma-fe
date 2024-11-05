@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, ReactNode, useState } from 'react';
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 
 type SidebarContent = ReactNode | null;
 
@@ -11,6 +11,8 @@ interface SidebarContextType {
   isRightSidebarVisible: boolean;
   isRightSidebarMinimized: boolean;
   setRightSidebarMinimized: (minimized: boolean) => void;
+  isLeftSidebarVisible: boolean;
+  setLeftSidebarVisible: (visible: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -19,6 +21,20 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   const [rightSidebarContent, setRightSidebarContent] = useState<SidebarContent>(null);
   const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(false);
   const [isRightSidebarMinimized, setIsRightSidebarMinimized] = useState(true);
+  const [isLeftSidebarVisible, setLeftSidebarVisible] = useState(false);
+
+  useEffect(() => {
+    const handleToggleLeft = () => setLeftSidebarVisible(prev => !prev);
+    const handleToggleRight = () => setIsRightSidebarMinimized(prev => !prev);
+
+    window.addEventListener('toggle-left-sidebar', handleToggleLeft);
+    window.addEventListener('toggle-right-sidebar', handleToggleRight);
+
+    return () => {
+      window.removeEventListener('toggle-left-sidebar', handleToggleLeft);
+      window.removeEventListener('toggle-right-sidebar', handleToggleRight);
+    };
+  }, []);
 
   const showRightSidebar = (content: SidebarContent) => {
     setRightSidebarContent(content);
@@ -38,6 +54,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       isRightSidebarVisible,
       isRightSidebarMinimized,
       setRightSidebarMinimized: setIsRightSidebarMinimized,
+      isLeftSidebarVisible,
+      setLeftSidebarVisible,
     }}>
       {children}
     </SidebarContext.Provider>
