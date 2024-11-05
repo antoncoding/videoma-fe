@@ -37,6 +37,8 @@ export function useSentenceManager() {
 
   const saveSentence = async (videoId: string, sentence: SentenceAnalysis) => {
     if (!session?.accessToken) return false;
+
+    console.log('saving sentence',  videoId, sentence);
     
     try {
       const success = await SavedItemsService.saveSentence(
