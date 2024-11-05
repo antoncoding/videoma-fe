@@ -46,8 +46,8 @@ export function OnboardingFlow() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted">
-      <Card className="w-full max-w-2xl p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
+      <Card className="w-full max-w-2xl p-4 sm:p-8">
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.div
@@ -58,12 +58,12 @@ export function OnboardingFlow() {
             >
               <div className="text-center space-y-4">
                 <GraduationCap className="w-12 h-12 mx-auto text-primary" />
-                <h1 className="text-3xl font-bold">Welcome to Vidioma</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold">Welcome to Vidioma</h1>
                 <p className="text-muted-foreground">
                   First, let's set your native language you're comfortable with
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {Object.values(LANGUAGES)
                   .filter(lang => lang.canBePrimary)
                   .map((lang) => (
@@ -104,12 +104,12 @@ export function OnboardingFlow() {
               className="space-y-6"
             >
               <div className="text-center space-y-4">
-                <h2 className="text-2xl font-bold">Choose a Language to Learn</h2>
+                <h2 className="text-xl sm:text-2xl font-bold">Choose a Language to Learn</h2>
                 <p className="text-muted-foreground">
                   Select the language you want to start learning
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {availableLanguages.map((lang) => (
                   <Card
                     key={lang.code}
@@ -131,12 +131,16 @@ export function OnboardingFlow() {
                   </Card>
                 ))}
               </div>
-              <div className="flex gap-4">
-                <Button variant="outline" onClick={() => setStep(0)}>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setStep(0)}
+                  className="w-full sm:w-auto"
+                >
                   Back
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                   disabled={!selectedLanguage}
                   onClick={() => setStep(2)}
                 >
@@ -154,12 +158,12 @@ export function OnboardingFlow() {
               className="space-y-6"
             >
               <div className="text-center space-y-4">
-                <h2 className="text-2xl font-bold">What's your level?</h2>
+                <h2 className="text-xl sm:text-2xl font-bold">What's your level?</h2>
                 <p className="text-muted-foreground">
                   This helps us personalize your learning experience
                 </p>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {LEVELS.map((level) => (
                   <Card
                     key={level.value}
@@ -176,12 +180,16 @@ export function OnboardingFlow() {
                   </Card>
                 ))}
               </div>
-              <div className="flex gap-4">
-                <Button variant="outline" onClick={() => setStep(1)}>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setStep(1)}
+                  className="w-full sm:w-auto"
+                >
                   Back
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                   disabled={!selectedLevel}
                   onClick={() => setStep(3)}
                 >
@@ -199,12 +207,12 @@ export function OnboardingFlow() {
               className="space-y-6"
             >
               <div className="text-center space-y-4">
-                <h2 className="text-2xl font-bold">Choose Your Teacher</h2>
+                <h2 className="text-xl sm:text-2xl font-bold">Choose Your Teacher</h2>
                 <p className="text-muted-foreground">
                   Select a voice that will guide you through your learning journey
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {VOICE_PROFILES[selectedLanguage as keyof typeof VOICE_PROFILES]?.map((voice) => (
                   <Card 
                     key={voice.id}
@@ -230,12 +238,16 @@ export function OnboardingFlow() {
                   </Card>
                 ))}
               </div>
-              <div className="flex gap-4">
-                <Button variant="outline" onClick={() => setStep(2)}>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setStep(2)}
+                  className="w-full sm:w-auto"
+                >
                   Back
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                   disabled={!selectedTeacher}
                   onClick={handleComplete}
                 >

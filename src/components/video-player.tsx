@@ -15,6 +15,7 @@ import { TranscriptData, Subtitle } from '@/types/subtitle';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface VideoPlayerProps {
   videoUrl: string;
@@ -69,6 +70,8 @@ export function VideoPlayer({
 
   const [isLoadingTranslations, setIsLoadingTranslations] = useState(false);
   const [hasLoadedAllTranslations, setHasLoadedAllTranslations] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'original' | 'translation'>('original');
 
   const getCurrentSubtitle = (subtitles?: Subtitle[]) => {
     if (!subtitles || !Array.isArray(subtitles)) return null;
@@ -410,13 +413,31 @@ export function VideoPlayer({
         </div>
 
         <Card className="p-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Mobile tabs */}
+          <div className="block md:hidden mb-4">
+            <Tabs defaultValue="original" onValueChange={(value) => setActiveTab(value as 'original' | 'translation')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="original">
+                  <span className="flex items-center gap-2">
+                    {getLanguageEmoji(audioLanguage)} Original
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="translation">
+                  <span className="flex items-center gap-2">
+                    {getLanguageEmoji(assistingLanguage)} Translation
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Desktop view - grid, Mobile view - single column based on tab */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Original transcript */}
-            <div
-              ref={originalTranscriptRef}
-              className="h-[300px] overflow-y-auto relative"
-              onScroll={handleScroll}
-            >
+            <div className={cn(
+              "h-[300px] overflow-y-auto relative",
+              activeTab === 'translation' ? 'hidden md:block' : 'block'
+            )}>
               <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
                 <span className="text-lg">{getLanguageEmoji(audioLanguage)}</span>
                 <h3 className="font-semibold">Original</h3>
@@ -443,11 +464,10 @@ export function VideoPlayer({
             </div>
 
             {/* Translation column */}
-            <div
-              ref={translationTranscriptRef}
-              className="h-[300px] overflow-y-auto border-l pl-4 relative"
-              onScroll={handleScroll}
-            >
+            <div className={cn(
+              "h-[300px] overflow-y-auto md:border-l md:pl-4 relative",
+              activeTab === 'original' ? 'hidden md:block' : 'block'
+            )}>
               <div className="flex items-center gap-2 mb-2 sticky top-0 bg-background p-2 border-b z-10">
                 <span className="text-lg">{getLanguageEmoji(assistingLanguage)}</span>
                 <h3 className="font-semibold">Translation</h3>

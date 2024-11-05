@@ -25,12 +25,12 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [userInput, setUserInput] = useState('');
-  const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
+  const { playTextWithAudio, stopAudio, isLoading: audioLoading } = useAudioPlayback();
   const { isItemCompleted, toggleItemCompletion } = useLearningProgress();
 
   const exercise = exercises[currentIndex];
   const isLastExercise = currentIndex === exercises.length - 1;
-  const exerciseId = `exercise-${currentIndex}`.hashCode();
+  const exerciseId = `exercise-${currentIndex}-${exercise.question}`;
 
   console.log('exercises', exercises);
 
@@ -122,12 +122,12 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => playAudio(exercise.question, language, exerciseId)}
+                  onClick={() => playTextWithAudio(exercise.question, "alloy", language, exerciseId)}
                   disabled={audioLoading}
                 >
                   <Volume2 className={cn(
                     "h-4 w-4",
-                    isPlaying && "text-primary animate-pulse"
+                    audioLoading && "text-primary animate-pulse"
                   )} />
                 </Button>
               </div>
@@ -247,7 +247,6 @@ export function Exercises({ exercises, onComplete, language, sessionId }: Exerci
       "p-6",
       isCurrentExerciseCompleted && "border-green-500/20 bg-green-50/50"
     )}>
-      <audio ref={audioRef} hidden />
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div className="space-y-1">

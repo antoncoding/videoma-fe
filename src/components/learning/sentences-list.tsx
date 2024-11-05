@@ -29,7 +29,7 @@ export function SentencesList({
   videoId,
   showBookmark = false,
 }: SentencesListProps) {
-  const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
+  const { playTextWithAudio, stopAudio, isLoading: audioLoading } = useAudioPlayback();
   const [expandedSentences, setExpandedSentences] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
   const { saveSentence, deleteSentence } = useSentenceManager();
@@ -126,12 +126,11 @@ export function SentencesList({
 
   return (
     <div className="space-y-4">
-      <audio ref={audioRef} hidden />
       {sentences.map((sentence, index) => {
         const itemId = `sentence-${index}`;
         const isCompleted = isItemCompleted(sessionId, itemId);
         const isExpanded = expandedSentences.has(itemId);
-        const audioId = `${itemId}-${sentence.original}`.hashCode();
+        const audioId = `${itemId}-${sentence.original}`;
         
         return (
           <motion.div
@@ -158,13 +157,13 @@ export function SentencesList({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          playAudio(sentence.original, language, audioId);
+                          playTextWithAudio(sentence.original, "alloy", language, audioId);
                         }}
                         disabled={audioLoading}
                       >
                         <Volume2 className={cn(
                           "h-4 w-4",
-                          isPlaying && "text-primary animate-pulse"
+                          audioLoading && "text-primary animate-pulse"
                         )} />
                       </Button>
                     </div>
@@ -217,7 +216,7 @@ export function SentencesList({
                           <h4 className="text-sm font-medium">Word Breakdown</h4>
                           <div className="grid grid-cols-2 gap-2">
                             {sentence.breakdown.map((part, i) => {
-                              const partId = `sentence-${sentence.original}-part-${i}`.hashCode();
+                              const partId = `sentence-${sentence.original}-part-${i}`;
                               return (
                                 <div key={i} className="text-sm">
                                   <div className="flex items-center gap-2">
@@ -227,13 +226,13 @@ export function SentencesList({
                                       size="sm"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        playAudio(part.word, language, partId);
+                                        playTextWithAudio(part.word, "alloy", language, partId);
                                       }}
                                       disabled={audioLoading}
                                     >
                                       <Volume2 className={cn(
                                         "h-3 w-3",
-                                        isPlaying && "text-primary animate-pulse"
+                                        audioLoading && "text-primary animate-pulse"
                                       )} />
                                     </Button>
                                   </div>
@@ -260,7 +259,7 @@ export function SentencesList({
                         <div className="space-y-3">
                           <h4 className="text-sm font-medium">Similar Examples</h4>
                           {sentence.similarExamples.map((example, i) => {
-                            const exampleId = `sentence-${sentence.original}-example-${i}`.hashCode();
+                            const exampleId = `sentence-${sentence.original}-example-${i}`;
                             return (
                               <div key={i} className="text-sm pl-4 border-l-2">
                                 <div className="flex items-center gap-2">
@@ -270,13 +269,13 @@ export function SentencesList({
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      playAudio(example.sentence, language, exampleId);
+                                      playTextWithAudio(example.sentence, "alloy", language, exampleId);
                                     }}
                                     disabled={audioLoading}
                                   >
                                     <Volume2 className={cn(
                                       "h-3 w-3",
-                                      isPlaying && "text-primary animate-pulse"
+                                      audioLoading && "text-primary animate-pulse"
                                     )} />
                                   </Button>
                                 </div>
