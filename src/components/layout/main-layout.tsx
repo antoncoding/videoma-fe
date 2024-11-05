@@ -42,7 +42,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="max-w-[1200px] mx-auto">
-            <main className="py-8">{children}</main>
+            <main className="p-8">{children}</main>
           </div>
         </div>
         <RightSidebar />
