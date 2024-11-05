@@ -95,7 +95,10 @@ export function Sidebar() {
     <div
       className={cn(
         "fixed left-0 top-0 z-40 h-screen border-r bg-background transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64"
+        isCollapsed ? "w-16" : "w-64",
+        "md:translate-x-0",
+        isCollapsed ? "-translate-x-16" : "-translate-x-64",
+        "md:translate-x-0"
       )}
     >
       <div className="flex h-14 items-center border-b px-4">
@@ -238,7 +241,8 @@ export function Sidebar() {
           {status === "authenticated" && session?.user ? (
             <div className={cn(
               "flex items-center gap-3",
-              isCollapsed && "flex-col"
+              isCollapsed ? "flex-col" : "flex-row",
+              "px-2"
             )}>
               <Avatar className="h-9 w-9">
                 <AvatarImage src={session.user.image || undefined} />
@@ -288,6 +292,13 @@ export function Sidebar() {
           )}
         </div>
       </div>
+
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[-1] md:hidden"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
     </div>
   );
 } 

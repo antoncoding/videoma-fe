@@ -16,7 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${montserrat.variable} font-sans`} suppressHydrationWarning>
+      <body 
+        className={`${inter.variable} ${montserrat.variable} font-sans overflow-x-hidden`} 
+        suppressHydrationWarning
+      >
         <Providers>
           {children}
         </Providers>

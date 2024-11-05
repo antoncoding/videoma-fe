@@ -4,9 +4,9 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { RightSidebar } from "@/components/layout/right-sidebar";
 import { SidebarProvider } from "@/contexts/sidebar-context";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  // Use client-side only rendering for layout calculations
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -14,15 +14,20 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!isMounted) {
-    return null; // or a loading skeleton
+    return null;
   }
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
         <Sidebar />
-        <div className="flex-1 ml-64 mr-80">
-          <div className="max-w-[1200px] mx-auto px-8">
+        <div className={cn(
+          "flex-1",
+          "ml-0 md:ml-64",
+          "mr-0 md:mr-16 lg:mr-80",
+          "transition-all duration-300"
+        )}>
+          <div className="max-w-[1200px] mx-auto px-4 md:px-8">
             <main className="py-8">{children}</main>
           </div>
         </div>

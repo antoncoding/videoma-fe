@@ -29,8 +29,6 @@ export default function VideoPage() {
   const { videos } = useVideosStore();
   const video = videos.find((v) => v.id === params.id);
 
-  console.log('video', video);
-
   const { getHighlightsForVideo } = useHighlightsStore();
   const { showRightSidebar, hideRightSidebar } = useSidebar();
   

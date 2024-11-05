@@ -9,6 +9,8 @@ interface SidebarContextType {
   showRightSidebar: (content: SidebarContent) => void;
   hideRightSidebar: () => void;
   isRightSidebarVisible: boolean;
+  isRightSidebarMinimized: boolean;
+  setRightSidebarMinimized: (minimized: boolean) => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -16,14 +18,16 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [rightSidebarContent, setRightSidebarContent] = useState<SidebarContent>(null);
   const [isRightSidebarVisible, setIsRightSidebarVisible] = useState(false);
+  const [isRightSidebarMinimized, setIsRightSidebarMinimized] = useState(true);
 
   const showRightSidebar = (content: SidebarContent) => {
     setRightSidebarContent(content);
     setIsRightSidebarVisible(true);
+    setIsRightSidebarMinimized(false);
   };
 
   const hideRightSidebar = () => {
-    setIsRightSidebarVisible(false);
+    setIsRightSidebarMinimized(true);
   };
 
   return (
@@ -32,6 +36,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       showRightSidebar,
       hideRightSidebar,
       isRightSidebarVisible,
+      isRightSidebarMinimized,
+      setRightSidebarMinimized: setIsRightSidebarMinimized,
     }}>
       {children}
     </SidebarContext.Provider>

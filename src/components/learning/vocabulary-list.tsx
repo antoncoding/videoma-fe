@@ -38,7 +38,6 @@ export function VocabularyList({
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
   const { saveVocabulary, deleteVocabulary } = useSentenceManager();
-  const [bookmarkedWords, setBookmarkedWords] = useState<Set<string>>(new Set());
   const { data: session } = useSession();
   const [savedVocabs, setSavedVocabs] = useState<Record<string, number>>({});
 

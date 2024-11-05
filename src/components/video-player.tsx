@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Settings } from "lucide-react";
 import { useLanguageSettings } from '@/hooks/useLanguageSettings';
 import { LANGUAGES, getLanguageEmoji } from "@/constants/languages";
 import { useHighlightsStore } from '@/store/highlights';
