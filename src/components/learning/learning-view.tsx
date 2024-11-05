@@ -9,15 +9,17 @@ import { useLearningProgress } from "@/store/learning-progress";
 import { Button } from "@/components/ui/button";
 import { TutorMessage } from "./tutor-message";
 import { useEffect, useState } from "react";
+import { TranscriptData } from "@/types/subtitle";
 
 interface LearningViewProps {
   session: LearningSessionType;
   videoId: string;
   onBack: () => void;
   language: string;
+  transcript: TranscriptData | null;
 }
 
-export function LearningView({ session, videoId, onBack, language }: LearningViewProps) {
+export function LearningView({ session, videoId, onBack, language, transcript }: LearningViewProps) {
   const { toggleItemCompletion, initializeProgress, getProgress } = useLearningProgress();
 
   // Initialize progress when session is loaded
@@ -124,6 +126,8 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
             onToggleComplete={handleVocabularyProgress}
             sessionId={session.id}
             videoId={videoId}
+            showBookmark={true}
+            transcript={transcript}
           />
         </TabPanel>
 
@@ -135,6 +139,7 @@ export function LearningView({ session, videoId, onBack, language }: LearningVie
               onToggleComplete={handleSentenceProgress}
               sessionId={session.id}
               videoId={videoId}
+              showBookmark={true}
             />
           </div>
         </TabPanel>

@@ -71,7 +71,7 @@ export function useVideoTranscript(videoUrl: string, audioLanguage: string, targ
     if (isLoadingTranslation || currentTranslationPage >= totalPages) return;
 
     // If we're within 30 seconds of the last loaded timestamp, load more
-    const BUFFER_TIME = 30; // seconds
+    const BUFFER_TIME = 10; // seconds
     if (currentTimestamp > (lastLoadedTimestamp - BUFFER_TIME)) {
       setIsLoadingTranslation(true);
       const nextPage = await fetchTranslationPage(currentTranslationPage + 1);

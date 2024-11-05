@@ -18,6 +18,7 @@ interface SentencesListProps {
   onToggleComplete: (index: number) => void;
   sessionId: string;
   videoId: string;
+  showBookmark?: boolean;
 }
 
 export function SentencesList({ 
@@ -26,6 +27,7 @@ export function SentencesList({
   onToggleComplete,
   sessionId,
   videoId,
+  showBookmark = false,
 }: SentencesListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedSentences, setExpandedSentences] = useState<Set<string>>(new Set());
@@ -182,7 +184,7 @@ export function SentencesList({
                         sentence.original in savedSentences && "fill-current"
                       )} />
                     </Button>
-                    <Button
+                    { showBookmark && <Button
                       variant={"outline"}
                       size="sm"
                       className="w-[120px]"
@@ -196,7 +198,7 @@ export function SentencesList({
                         isCompleted && "text-green-500"
                       )} />
                       {isCompleted ? "Learned" : "Mark Learned"}
-                    </Button>
+                    </Button>}
                   </div>
                 </div>
 

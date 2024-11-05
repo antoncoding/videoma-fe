@@ -11,6 +11,7 @@ import { useLearningProgress } from "@/store/learning-progress";
 import { useSentenceManager } from "@/hooks/useSentenceManager";
 import { useSession } from "next-auth/react";
 import { API_ROUTES } from "@/services/api";
+import { TranscriptData } from "@/types/subtitle";
 
 interface VocabularyListProps {
   words: VocabularyWord[];
@@ -18,6 +19,10 @@ interface VocabularyListProps {
   onToggleComplete: (index: number) => void;
   sessionId: string;
   videoId: string;
+  showBookmark?: boolean;
+
+  // passed in for context
+  transcript?: TranscriptData | null
 }
 
 export function VocabularyList({ 
@@ -26,6 +31,8 @@ export function VocabularyList({
   onToggleComplete,
   sessionId,
   videoId,
+  showBookmark = false,
+  transcript = undefined
 }: VocabularyListProps) {
   const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
@@ -124,13 +131,13 @@ export function VocabularyList({
       {words.map((word, index) => {
         const itemId = `word-${index}`;
         const isCompleted = isItemCompleted(sessionId, itemId);
-        const wordSentenceId = itemId.hashCode();
         
         // need a more complex id to make sure it's unique, don't mess up with cache
         const audioId = `${itemId}-${word.word}`.hashCode();
         const isExpanded = expandedWords.has(itemId);
-        const isBookmarked = bookmarkedWords.has(word.word);
 
+        const context = transcript?.data.find(t => t.text.includes(word.word))
+        
         return (
           <motion.div
             key={word.word}
@@ -186,7 +193,7 @@ export function VocabularyList({
                         word.word in savedVocabs && "fill-current"
                       )} />
                     </Button>
-                    <Button
+                    { showBookmark && (<Button
                       variant={"outline"}
                       size="sm"
                       className="w-[120px]"
@@ -197,7 +204,7 @@ export function VocabularyList({
                         isCompleted && "text-green-500"
                       )} />
                       {isCompleted ? "Learned" : "Mark Learned"}
-                    </Button>
+                    </Button>)}
                   </div>
                 </div>
 
@@ -239,6 +246,32 @@ export function VocabularyList({
                               </div>
                             );
                           })}
+
+                          {/* if context is found, also show it */}
+                          {
+                            context && (
+                              <>
+                                <h4 className="text-sm font-medium">Used in Video</h4>
+                                
+                                <div className="text-sm pl-4 border-l-2 flex items-center gap-2">
+                                  <p>{context.text}</p>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      playAudio(context.text, language, context.text.hashCode());
+                                    }}
+                                  >
+                                    <Volume2 className={cn(
+                                      "h-3 w-3",
+                                      isPlaying && "text-primary animate-pulse"
+                                    )} />
+                                  </Button>
+                                </div>
+                              </>
+                            )
+                          }
                         </div>
                       </div>
                     </motion.div>

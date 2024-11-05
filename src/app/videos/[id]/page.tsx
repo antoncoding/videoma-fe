@@ -161,6 +161,7 @@ export default function VideoPage() {
               videoId={video.id}
               onBack={() => setLearningStep('selecting')}
               language={video.language}
+              transcript={transcript}
             />
           ) : null}
         </AnimatePresence>

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { useLanguageSettings } from '@/hooks/useLanguageSettings';
 import { LANGUAGES, getLanguageEmoji } from "@/constants/languages";
 import { useHighlightsStore } from '@/store/highlights';
@@ -67,6 +67,9 @@ export function VideoPlayer({
 
   const assistingLanguage = getAssistingLanguage(audioLanguage);
 
+  const [isLoadingTranslations, setIsLoadingTranslations] = useState(false);
+  const [hasLoadedAllTranslations, setHasLoadedAllTranslations] = useState(false);
+
   const getCurrentSubtitle = (subtitles?: Subtitle[]) => {
     if (!subtitles || !Array.isArray(subtitles)) return null;
 
@@ -107,10 +110,24 @@ export function VideoPlayer({
     return () => clearTimeout(timer);
   };
 
-  const handleProgress = ({ playedSeconds }: { playedSeconds: number }) => {
+  const handleProgress = async ({ playedSeconds }: { playedSeconds: number }) => {
     setCurrentTime(playedSeconds);
-    // Check if we need to load more translations
-    loadMoreTranslationsIfNeeded?.(playedSeconds);
+    
+    // Check if we need to load translations for any previous segments
+    if (translation?.data && transcript?.data) {
+      const translatedTimestamps = new Set(translation.data.map(t => t.start));
+      const missingTranslations = transcript.data
+        .filter(t => t.start <= playedSeconds && !translatedTimestamps.has(t.start));
+
+      if (missingTranslations.length > 0) {
+        setIsLoadingTranslations(true);
+        try {
+          await loadMoreTranslationsIfNeeded(playedSeconds);
+        } finally {
+          setIsLoadingTranslations(false);
+        }
+      }
+    }
   };
 
   const handleSubtitleClick = (startTime: number) => {
@@ -146,25 +163,6 @@ export function VideoPlayer({
       text: selectedText,
       type,
       subtitleId
-    });
-  };
-
-  const handleHighlight = (subtitle: Subtitle) => {
-    if (!selectedText) return;
-
-    const highlight: VocabularyHighlight = {
-      type: selectedText.type,
-      content: selectedText.text,
-      timestamp: subtitle.start,
-      context: subtitle.text,
-    };
-
-    addHighlight(videoId, highlight);
-    setSelectedText(null);
-
-    toast({
-      title: "✨ Added to vocabulary list",
-      description: `${selectedText.type === 'word' ? 'Word' : 'Sentence'} saved for learning`,
     });
   };
 
@@ -265,6 +263,28 @@ export function VideoPlayer({
         </div>
       </div>
     );
+  };
+
+  const handleLoadMoreTranslations = async () => {
+    if (!transcript?.data || !translation?.data) return;
+    
+    setIsLoadingTranslations(true);
+    try {
+      // Get the last translated timestamp
+      const lastTranslatedTimestamp = Math.max(...translation.data.map(t => t.start));
+      // Find the next chunk of untranslated segments
+      const nextUntranslatedSegments = transcript.data
+        .filter(t => t.start > lastTranslatedTimestamp)
+        .slice(0, 10); // Load 10 segments at a time
+      
+      if (nextUntranslatedSegments.length > 0) {
+        await loadMoreTranslationsIfNeeded(nextUntranslatedSegments[nextUntranslatedSegments.length - 1].start);
+      } else {
+        setHasLoadedAllTranslations(true);
+      }
+    } finally {
+      setIsLoadingTranslations(false);
+    }
   };
 
   return (
@@ -434,9 +454,14 @@ export function VideoPlayer({
                 {hasTranslationError ? (
                   <Badge>Error</Badge>
                 ) : (
-                  <Badge variant={translation?.source === "youtube_translation" ? "secondary" : "default"}>
-                    {translation?.source === "youtube_translation" ? "YouTube" : "AI Translated"}
-                  </Badge>
+                  <>
+                    <Badge variant={translation?.source === "youtube_translation" ? "secondary" : "default"}>
+                      {translation?.source === "youtube_translation" ? "YouTube" : "AI Translated"}
+                    </Badge>
+                    {isLoadingTranslations && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </>
                 )}
               </div>
 
@@ -446,6 +471,21 @@ export function VideoPlayer({
                     {renderSubtitleText(item, true)}
                   </div>
                 ))}
+                
+                {/* Load more button */}
+                {hasValidTranslation && !hasLoadedAllTranslations && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full mt-4" 
+                    onClick={handleLoadMoreTranslations}
+                    disabled={isLoadingTranslations}
+                  >
+                    {isLoadingTranslations ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Load more translations
+                  </Button>
+                )}
               </div>
             </div>
           </div>

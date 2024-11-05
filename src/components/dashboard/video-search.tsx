@@ -91,7 +91,7 @@ export function VideoSearch({ languageCode, level }: VideoSearchProps) {
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
               placeholder="Paste YouTube URL here..."
-              className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent px-0 focus-visible:border-x-2 focus-visible:border-x-primary"
+              className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent px-0 focus-visible:border-background border-b-background"
               disabled={loading}
             />
           </div>
