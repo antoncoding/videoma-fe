@@ -1,25 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type AudioCache = {
-  [key: string]: string;
-};
+interface AudioCache {
+  [key: string]: number; // sentence_id -> audio_id mapping
+}
 
-export type AudioState = {
+interface AudioState {
   cache: AudioCache;
-  currentAudio?: HTMLAudioElement;
-  addToCache: (localId: string, audioId: string) => void;
-  getFromCache: (localId: string) => string | undefined;
-  playAudio: (url: string) => void;
-  stopAudio: () => void;
-};
+  addToCache: (localId: number, audioId: number) => void;
+  getFromCache: (localId: number) => number | undefined;
+}
 
 export const useAudioStore = create<AudioState>()(
   persist(
     (set, get) => ({
       cache: {},
-      currentAudio: undefined,
-
       addToCache: (localId, audioId) => 
         set((state) => ({
           cache: {
@@ -27,32 +22,10 @@ export const useAudioStore = create<AudioState>()(
             [localId]: audioId
           }
         })),
-
       getFromCache: (localId) => get().cache[localId],
-
-      playAudio: (url) => {
-        // Stop any currently playing audio
-        get().stopAudio();
-
-        // Create and play new audio
-        const audio = new Audio(url);
-        audio.play();
-        set({ currentAudio: audio });
-      },
-
-      stopAudio: () => {
-        const { currentAudio } = get();
-        if (currentAudio) {
-          currentAudio.pause();
-          currentAudio.currentTime = 0;
-        }
-        set({ currentAudio: undefined });
-      },
     }),
     {
       name: 'audio-cache',
-      // Only persist the cache, not the currentAudio
-      partialize: (state) => ({ cache: state.cache }),
     }
   )
 ); 

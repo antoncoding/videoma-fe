@@ -34,7 +34,7 @@ export function VocabularyList({
   showBookmark = false,
   transcript = undefined
 }: VocabularyListProps) {
-  const { playTextWithAudio, stopAudio, isLoading: audioLoading } = useAudioPlayback();
+  const { audioRef, isPlaying, audioLoading, playAudio } = useAudioPlayback();
   const [expandedWords, setExpandedWords] = useState<Set<string>>(new Set());
   const { isItemCompleted } = useLearningProgress();
   const { saveVocabulary, deleteVocabulary } = useSentenceManager();
@@ -126,12 +126,13 @@ export function VocabularyList({
 
   return (
     <div className="space-y-4">
+      <audio ref={audioRef} hidden />
       {words.map((word, index) => {
         const itemId = `word-${index}`;
         const isCompleted = isItemCompleted(sessionId, itemId);
         
         // need a more complex id to make sure it's unique, don't mess up with cache
-        const audioId = `${itemId}-${word.word}`;
+        const audioId = `${itemId}-${word.word}`.hashCode();
         const isExpanded = expandedWords.has(itemId);
 
         const context = transcript?.data.find(t => t.text.includes(word.word))
@@ -162,13 +163,13 @@ export function VocabularyList({
                         className="h-6" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          playTextWithAudio(word.word, "alloy", language, audioId);
+                          playAudio(word.word, language, audioId);
                         }}
                         disabled={audioLoading}
                       >
                         <Volume2 className={cn(
                           "w-3 h-3",
-                          audioLoading && "text-primary animate-pulse"
+                          isPlaying && "text-primary animate-pulse"
                         )} />
                       </Button>
                       <Badge variant="secondary">{word.partOfSpeech}</Badge>
@@ -220,7 +221,7 @@ export function VocabularyList({
                         <div className="space-y-3">
                           <h4 className="text-sm font-medium">Examples</h4>
                           {word.examples.map((example, i) => {
-                            const exampleSentenceId = `word-${word.word}-example-${i}`;
+                            const exampleSentenceId = `word-${word.word}-example-${i}`.hashCode();
                             return (
                               <div key={i} className="text-sm pl-4 border-l-2">
                                 <div className="flex items-center gap-2">
@@ -230,13 +231,13 @@ export function VocabularyList({
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      playTextWithAudio(example.sentence, "alloy", language, exampleSentenceId);
+                                      playAudio(example.sentence, language, exampleSentenceId);
                                     }}
                                     disabled={audioLoading}
                                   >
                                     <Volume2 className={cn(
                                       "h-3 w-3",
-                                      audioLoading && "text-primary animate-pulse"
+                                      isPlaying && "text-primary animate-pulse"
                                     )} />
                                   </Button>
                                 </div>
@@ -258,12 +259,12 @@ export function VocabularyList({
                                     size="sm"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      playTextWithAudio(context.text, "alloy", language, context.text);
+                                      playAudio(context.text, language, context.text.hashCode());
                                     }}
                                   >
                                     <Volume2 className={cn(
                                       "h-3 w-3",
-                                      audioLoading && "text-primary animate-pulse"
+                                      isPlaying && "text-primary animate-pulse"
                                     )} />
                                   </Button>
                                 </div>

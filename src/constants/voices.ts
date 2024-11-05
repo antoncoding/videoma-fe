@@ -133,6 +133,4 @@ export const VOICE_PROFILES: Record<string, VoiceProfile[]> = {
   fr: FRENCH_VOICES,
   en: ENGLISH_VOICES,
   ja: JAPANESE_VOICES,
-};
-
-export const DEFAULT_VOICE_ID = "alloy";
+}; 
