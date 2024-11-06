@@ -15,12 +15,20 @@ export const useHighlightsStore = create<HighlightsState>()(
       highlights: {},
       
       addHighlight: (videoId, highlight) => 
-        set((state) => ({
+        set((state) => {
+
+          const existing = state.highlights[videoId] || [];
+          if (existing.find(h => h.content === highlight.content)) {
+            return state;
+          }
+
+          return ({
           highlights: {
             ...state.highlights,
-            [videoId]: [...(state.highlights[videoId] || []), highlight],
+            [videoId]: [...existing, highlight],
           },
-        })),
+        })
+      }),
       
       removeHighlight: (videoId, content) =>
         set((state) => ({
